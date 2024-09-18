@@ -96,11 +96,13 @@
     async function mint_tokens(toAddress, amount) {
         if (window.web3 && walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(abi, contractAddress);
+            contract.setConfig({ "defaultNetworkId": walletnetwork });
             try {
                 await contract.methods.balanceOf(contractAddress).call().then(console.log);
                 await contract.methods.name().call().then(console.log);
                 await contract.methods.symbol().call().then(console.log);
                 await contract.methods.decimals().call().then(console.log);
+                console.log("default network id: " + contract.defaultNetworkId);
                 // console.log("mint fun: " + (contract.methods.mint));
                 // const estimatedGas = await contract.methods.mint(toAddress, amount)
                 //     .estimateGas();
