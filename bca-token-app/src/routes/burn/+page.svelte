@@ -4,9 +4,11 @@
 
     import { createForm } from "svelte-forms-lib";
 
-    import abi from "../../lib/amoy_token-abi.json";
+    //  import abi from "../../lib/amoy_token-abi.json";
+    import abi_json from "../../lib/bca_token-abi.json";
+    const abi = abi_json.abi;
 
-    const contractAddress = "0x8575aecd20dcd1aa3fc83a0ac29b1f71714f47f3";
+    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
 
     let warning = undefined
     let walletnetwork = undefined
@@ -93,19 +95,30 @@
         }
     }
 
-    async function burn_tokens(fromAddress, amount) {
+    async function burn_tokens(fromAddress, amount: number) {
         if (window.web3 && walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(abi, contractAddress);
             try {
-                const estimatedGas = await contract.methods.burn(fromAddress, amount)
-                .estimateGas();
+                const decimals: number = Number(await contract.methods.decimals().call());
+                const gasPrice = await window.web3.eth.getGasPrice();
+                contract.methods.totalSupply().call((err, result) => {
+                    if(err){
+                        console.error('Error: ', err);
+                        // handle the error here
+                    } else {
+                        console.log("total supply: " + window.web3.utils.fromWei(result, 'BCA1'));
+                        // You can add supply now to whatever part
+                        // of your page you want it displayed
+                    }
+                    });
+
                 const receipt = await contract.methods
-                .burn(fromAddress, amount)
-                .send({
-                    from: walletaddr,
-                    gas: estimatedGas + 200000,
-                    gasPrice: "10000000000",
-                });
+                    .burn(fromAddress, amount * (10 ** decimals))
+                    .send({
+                        from: walletaddr,
+                        gas: 60000, //estimatedGas,
+                        gasPrice: gasPrice,
+                    });
                 console.log("Transaction Hash: " + receipt.transactionHash);
             } catch (error) {
                 console.error(error);
@@ -115,12 +128,12 @@
 
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
-            receiver: "0x..",
+            address: "0x..",
             amount: "100"
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            burn_tokens(values.receiver, values.amount);
+            burn_tokens(values.address, values.amount);
         }
         });
 
@@ -170,12 +183,12 @@
     {#if walletnetwork !== undefined && walletaddr !== undefined}
     <h3>Burning tokens</h3>
     <form on:submit={handleSubmit}>
-        <label for="receiver">receiver</label>
+        <label for="address">from service address</label>
         <input
-          id="receiver"
-          name="receiver"
+          id="address"
+          name="address"
           on:change={handleChange}
-          bind:value={$form.receiver}
+          bind:value={$form.address}
         />    
         <label for="amount">amount</label>
         <input

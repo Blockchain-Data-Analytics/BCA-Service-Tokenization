@@ -86,7 +86,12 @@ describe("Minting", function () {
 
     expect(await tokenContract.connect(minter).mint(user1.address, 100000000)).to.changeTokenBalance(tokenContract, user1, +100000000);
     expect(await tokenContract.connect(minter).totalSupply()).to.equal(100000000);
-    expect(tokenContract.connect(user2).mint(user2.address, 999999999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    expect(tokenContract.connect(user2).mint(user1.address, 999999999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+
+    // change of minter address
+    expect(await tokenContract.connect(owner).setMinterAddress(user2.address));
+    expect(await tokenContract.connect(user2).mint(user1.address, 100000000)).to.changeTokenBalance(tokenContract, user1, +100000000);
+    expect(await tokenContract.connect(user2).totalSupply()).to.equal(200000000);
   });
 });
 
@@ -97,7 +102,11 @@ describe("Burning", function () {
     expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(tokenContract, user2, +100000000);
     expect(await tokenContract.connect(burner).burn(user2.address, 50000000)).to.changeTokenBalance(tokenContract, user2, -50000000);
     expect(await tokenContract.connect(user1).totalSupply()).to.equal(50000000);
-    expect(tokenContract.connect(minter).burn(user2.address, 999999999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    expect(tokenContract.connect(user2).burn(user1.address, 9999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    // change of burner address
+    expect(await tokenContract.connect(owner).setBurnerAddress(user1.address));
+    expect(await tokenContract.connect(user1).burn(user2.address, 10000000)).to.changeTokenBalance(tokenContract, user2, -10000000);
+    expect(await tokenContract.connect(user1).totalSupply()).to.equal(40000000);
   });
 });
 

@@ -6,6 +6,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract BCAServiceToken is ERC20, AccessControl {
     address public serviceAddress;
+    address public minterAddress;
+    address public burnerAddress;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
@@ -20,6 +22,8 @@ contract BCAServiceToken is ERC20, AccessControl {
         ERC20(name, symbol)
     {
         serviceAddress = msg.sender;
+        minterAddress = minter;
+        burnerAddress = burner;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MINTER_ROLE, minter);
         _grantRole(BURNER_ROLE, burner);
@@ -33,6 +37,26 @@ contract BCAServiceToken is ERC20, AccessControl {
         _revokeRole(DEFAULT_ADMIN_ROLE, serviceAddress);
         serviceAddress = new_serviceAddress;
         _grantRole(DEFAULT_ADMIN_ROLE, new_serviceAddress);
+    }
+
+    /**
+     * @dev Allows the admin to set the minter address.
+     * @param new_minterAddress The address to set as the minter address.
+     */
+    function setMinterAddress(address new_minterAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(MINTER_ROLE, minterAddress);
+        minterAddress = new_minterAddress;
+        _grantRole(MINTER_ROLE, new_minterAddress);
+    }
+
+    /**
+     * @dev Allows the admin to set the burner address.
+     * @param new_burnerAddress The address to set as the burner address.
+     */
+    function setBurnerAddress(address new_burnerAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(BURNER_ROLE, burnerAddress);
+        burnerAddress = new_burnerAddress;
+        _grantRole(BURNER_ROLE, new_burnerAddress);
     }
 
     /**
