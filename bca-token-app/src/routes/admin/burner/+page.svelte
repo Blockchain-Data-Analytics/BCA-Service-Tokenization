@@ -5,7 +5,7 @@
     import { createForm } from "svelte-forms-lib";
 
     // import abi from "../../lib/amoy_token-abi.json";
-    import abi_json from "../../lib/bca_token-abi.json";
+    import abi_json from "../../../lib/bca_token-abi.json";
     const abi = abi_json.abi;
 
     const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
@@ -28,11 +28,12 @@
         try {
             window.ethereum.request({ method: 'eth_chainId' }).then(function(v) {
                 walletnetwork = v;
-                if (walletnetwork === "0x1") { networkname = "ethereum" }
-                if (walletnetwork === "0x89") { networkname = "polygon" }
-                if (walletnetwork === "0xa4b1") { networkname = "arbitrum" }
-                if (walletnetwork === "0xa86a") { networkname = "avalanche" }
-                if (walletnetwork === "0x13882") { networkname = "polygon amoy testnet" }
+                if (walletnetwork === "0x1") { networkname = "ethereum" } else
+                if (walletnetwork === "0x89") { networkname = "polygon" } else
+                if (walletnetwork === "0xa4b1") { networkname = "arbitrum" } else
+                if (walletnetwork === "0xa86a") { networkname = "avalanche" } else
+                if (walletnetwork === "0x13882") { networkname = "polygon amoy testnet" } else
+                networkname = "unknown or local"
             })
             warning = undefined;
         } catch (error) {
@@ -95,26 +96,24 @@
         }
     }
 
-    async function mint_tokens(toAddress, amount: number) {
+    async function setBurnerAccount(toAddress) {
         if (window.web3 && walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(abi, contractAddress);
             contract.setConfig({ "defaultNetworkId": walletnetwork });
             try {
-                // await contract.methods.balanceOf(contractAddress).call().then(console.log);
-                // await contract.methods.name().call().then(console.log);
-                // await contract.methods.symbol().call().then(console.log);
-                // await contract.methods.decimals().call().then(console.log);
-                const decimals: number = Number(await contract.methods.decimals().call());
-                console.log("amount: " + (amount * (10 ** decimals)));
+                await contract.methods.balanceOf(contractAddress).call().then(console.log);
+                await contract.methods.name().call().then(console.log);
+                await contract.methods.symbol().call().then(console.log);
+                await contract.methods.decimals().call().then(console.log);
                 const gasPrice = await window.web3.eth.getGasPrice();
-                // const estimatedGas = await contract.methods.mint(toAddress, amount)
-                //     .estimateGas();
-                // console.log("estimated gas: " + estimatedGas);
+                const estimatedGas = await contract.methods.setBurnerAddress(toAddress)
+                    .estimateGas();
+                console.log("estimated gas: " + estimatedGas);
                 const receipt = await contract.methods
-                    .mint(toAddress, amount * (10 ** decimals))
+                    .setBurnerAddress(toAddress)
                     .send({
                         from: walletaddr,
-                        gas: 60000, //estimatedGas,
+                        gas: estimatedGas,
                         gasPrice: gasPrice,
                     });
                 console.log("Transaction Hash: " + receipt.transactionHash);
@@ -126,12 +125,11 @@
 
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
-            receiver: "0x590Ea4BadDdB5041fe220C0260Eb26060e9c3fB6",  // User1
-            amount: "100"
+            address: "0x590Ea4B.. guessed ..26060e9c3fB6"
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            mint_tokens(values.receiver, values.amount);
+            setBurnerAccount(values.address);
         }
         });
 
@@ -142,7 +140,7 @@
         <meta name="description" content="wallet" />
 </svelte:head>
 
-<h1>BCA Tokens: minting</h1>
+<h1>BCA Tokens: administration - Danger Zone !!</h1>
 
 {#if warning !== undefined}
 <p>Warning: {warning}</p>
@@ -179,23 +177,16 @@
 
 <section class="action">
     {#if walletnetwork !== undefined && walletaddr !== undefined}
-    <h3>Minting tokens</h3>
+    <h3>Change Burner Account</h3>
     <form on:submit={handleSubmit}>
-        <label for="receiver">receiver</label>
+        <label for="address">address</label>
         <input
-          id="receiver"
-          name="receiver"
+          id="address"
+          name="address"
           on:change={handleChange}
-          bind:value={$form.receiver}
+          bind:value={$form.address}
         />    
-        <label for="amount">amount</label>
-        <input
-          id="amount"
-          name="amount"
-          on:change={handleChange}
-          bind:value={$form.amount}
-        />
-        <button type="submit">Mint</button>
+        <button type="submit">Set Burner Address</button>
       </form>
     {/if}
 </section>
