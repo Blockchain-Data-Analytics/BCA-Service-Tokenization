@@ -1,0 +1,47 @@
+@startuml 
+
+!theme bluegray
+
+skinparam backgroundColor #ffffff
+
+actor serviceAccount as sa #cyan;line:darkblue;line.bold;text:darkblue
+actor minter #lightgreen;line:darkblue;line.bold;text:darkblue
+actor burner #pink;line:darkblue;line.bold;text:darkblue
+actor user1 #lightgray;line:darkblue;line.bold;text:darkblue
+actor user2 #lightgray;line:darkblue;line.bold;text:darkblue
+
+rectangle Administration {
+    usecase "setServiceAccount" as UCsetsa
+    usecase "setMinterAddress" as UCsetmint
+    usecase "setBurnerAddress" as UCsetburn
+}
+
+:sa: -u-> UCsetsa : change
+:sa: <.u. UCsetsa : set
+:sa: -u-> UCsetmint : change
+:minter: <.u. UCsetmint : set
+:sa: -u-> UCsetburn : change
+:burner: <.u. UCsetburn : set
+
+rectangle Supply {
+    usecase "Minting tokens" as UCmint 
+    usecase "Burning tokens" as UCburn
+}
+
+:minter: --> UCmint : mint
+:burner: --> UCburn : burn
+:sa: <.. UCburn : from serviceAccount
+
+:user1: <.. UCmint : receives
+:user2: <.. UCmint : receives
+
+rectangle Transfer {
+    usecase "Transfer tokens" as UCtr
+}
+
+:user1: --> UCtr : transfer
+:user2: --> UCtr : transfer
+
+:sa: <.. UCtr : receives
+
+@enduml

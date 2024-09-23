@@ -1,0 +1,16 @@
+graph TD 
+
+    style tx3 fill:#626
+    style Client0 fill:#444
+    style Client1 fill:#444
+    style Service0 fill:#559
+    style Service1 fill:#559
+
+    subgraph off-chain
+    %% tx3 - services debit the client account for usage
+    tx3("tx3")
+    Client0(Client: Geez 5) -.-> tx3
+    Service0(Service) -.->|debit .1| tx3
+    tx3 -.-> Client1(Client: Geez 4.9)
+    tx3 -.-> Service1(Service: Geez 0.1)
+    end
