@@ -1,0 +1,27 @@
+graph LR
+
+    style Client0 fill:#444
+    style Client1 fill:#444
+    style ServiceAccount0 fill:#559
+    style Minter fill:#559
+    style tx0 fill:#484
+    style tx1 fill:#844
+
+    subgraph fiat
+    direction TB
+    %% tx0 - client charges account
+    tx0("tx0")
+    Client0("Client: $25") --> tx0 --> ServiceAccount0(Service Account: $25)
+    end
+
+    %% tx1 - mint tokens to client's account
+    tx1("tx1")
+    %% inputs
+    subgraph on-chain
+    direction BT
+    Minter --> tx1
+    %% outputs
+    tx1 --> Client1("Client: BCA1 25")
+    end
+
+    fiat -.-> on-chain
