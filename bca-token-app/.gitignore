@@ -21,3 +21,4 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 node_modules
 package-lock.json
+prisma/migrations

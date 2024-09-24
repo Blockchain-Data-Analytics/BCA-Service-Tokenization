@@ -1,109 +1,45 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Web3 } from 'web3';
-
+    // import { PrismaClient } from '@prisma/client'
     import { createForm } from "svelte-forms-lib";
 
-    // import abi from "../../lib/amoy_token-abi.json";
-    import abi_json from "../../lib/bca_token-abi.json";
-    const abi = abi_json.abi;
+    import { contractAddress, contractABI } from "$lib/contract"
 
-    const contractAddress = "0x5fbdb2315678afecb367f032d93f642f64180aa3";
+    import { WalletInformation, reset_warning, get_wallet_addr, get_wallet_balance, wallet_logout } from '$lib/wallet'
 
-    let warning = undefined
-    let walletnetwork = undefined
-    let networkname : string = "unknown"
-    let walletaddr: string | undefined = undefined
-    let walletbalance = undefined
+    let wallet = new WalletInformation()
 
     onMount ( () => {
         if (window.ethereum) {
             window.web3 = new Web3(window.ethereum);
         } else {
-            warning = "no web3 wallet attached!"
+            wallet.warning = "no web3 wallet attached!"
         }
     })
 
-    async function get_wallet_chainid() {
-        try {
-            window.ethereum.request({ method: 'eth_chainId' }).then(function(v) {
-                walletnetwork = v;
-                if (walletnetwork === "0x1") { networkname = "ethereum" }
-                if (walletnetwork === "0x89") { networkname = "polygon" }
-                if (walletnetwork === "0xa4b1") { networkname = "arbitrum" }
-                if (walletnetwork === "0xa86a") { networkname = "avalanche" }
-                if (walletnetwork === "0x13882") { networkname = "polygon amoy testnet" }
-            })
-            warning = undefined;
-        } catch (error) {
-            warning = "error while accessing wallet: " + error;
-        }
+    async function local_get_wallet_addr(ev) {
+        wallet = await get_wallet_addr(wallet, ev);
     }
-    function reset_warning() { warning = undefined }
-
-    async function wallet_logout() {
-        if (window.web3 && walletaddr !== undefined) {
-            await window.ethereum.request({
-                "method": "wallet_revokePermissions",
-                "params": [
-                    {
-                    "eth_accounts": { "addr": walletaddr }
-                    }
-                ]
-                });
-        }
-        walletnetwork = undefined
-        networkname = ""
-        walletaddr = undefined
-        walletbalance = undefined
+    async function local_get_wallet_balance(ev) {
+        wallet = await get_wallet_balance(wallet, ev);
     }
-    async function get_wallet_balance(ev) {
-        if (window.web3 && walletaddr !== undefined) {
-            ev.target.setAttribute("disabled","disabled")
-            walletbalance = await window.web3.eth.getBalance(walletaddr);
-            warning = undefined
-            ev.target.removeAttribute("disabled")
-        } else {
-            walletbalance = undefined;
-        }
+    async function local_wallet_logout() {
+        wallet = await wallet_logout(wallet)
     }
-    async function get_wallet_addr(ev) {
-        if (window.web3) {
-            ev.target.setAttribute("disabled","disabled")
-            try {
-                // get active network in wallet
-                get_wallet_chainid()
-                // request user's account address - prompts Metamask to login
-                const selectedAccount = await window.ethereum
-                    .request({
-                        method: "eth_requestAccounts",
-                    })
-                    .then((accs) => accs[0])
-                    .catch(() => {
-                        throw Error("Please select an account in your wallet");
-                    });
-
-                walletaddr = selectedAccount;
-                warning = undefined
-
-            } catch (error) {
-                warning = "error while accessing wallet: " + error;
-            }
-            ev.target.removeAttribute("disabled")
-        } else {
-            warning = "wallet not found";
-        }
+    function local_reset_warning() {
+        reset_warning(wallet);
     }
 
-    async function mint_tokens(toAddress, amount: number) {
-        if (window.web3 && walletaddr !== undefined) {
-            const contract = new window.web3.eth.Contract(abi, contractAddress);
-            contract.setConfig({ "defaultNetworkId": walletnetwork });
+    async function mint_tokens(toAddress: string, amount: number) {
+        if (window.web3 && wallet.walletaddr !== undefined) {
+            const contract = new window.web3.eth.Contract(contractABI, contractAddress);
+            contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
             try {
                 // await contract.methods.balanceOf(contractAddress).call().then(console.log);
                 // await contract.methods.name().call().then(console.log);
                 // await contract.methods.symbol().call().then(console.log);
-                // await contract.methods.decimals().call().then(console.log);
+                await contract.methods.decimals().call().then(console.log);
                 const decimals: number = Number(await contract.methods.decimals().call());
                 console.log("amount: " + (amount * (10 ** decimals)));
                 const gasPrice = await window.web3.eth.getGasPrice();
@@ -113,11 +49,31 @@
                 const receipt = await contract.methods
                     .mint(toAddress, amount * (10 ** decimals))
                     .send({
-                        from: walletaddr,
-                        gas: 60000, //estimatedGas,
+                        from: wallet.walletaddr,
+                        gas: 80000, //estimatedGas,
                         gasPrice: gasPrice,
                     });
-                console.log("Transaction Hash: " + receipt.transactionHash);
+                    // const prisma = new PrismaClient()
+                    // async function audit() {
+                    //     const log = await prisma.adminAudit.create({
+                    //         data: {
+                    //             user: wallet.walletaddr ?? "unk",
+                    //             amount: amount * (10 ** decimals),
+                    //             action: 'mint',
+                    //             target: toAddress,
+                    //             txhash: receipt.transactionHash.toString()
+                    //         },
+                    //     })
+                    //     console.log(log)
+                    // }
+                    // audit()
+                    //     .then(async () => {
+                    //         await prisma.$disconnect()
+                    //     })
+                    //     .catch(async (e) => {
+                    //         console.error(e)
+                    //         await prisma.$disconnect()
+                    //     })
             } catch (error) {
                 console.error(error);
             }
@@ -131,7 +87,7 @@
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            mint_tokens(values.receiver, values.amount);
+            mint_tokens(values.receiver, parseInt(values.amount));
         }
         });
 
@@ -144,41 +100,43 @@
 
 <h1>BCA Tokens: minting</h1>
 
-{#if warning !== undefined}
-<p>Warning: {warning}</p>
-<p><button type="button" on:click={ () => reset_warning() }>reset warning</button></p>
+{#if wallet.warning !== undefined}
+<p>Warning: {wallet.warning}</p>
+<p><button type="button" on:click={ () => local_reset_warning() }>reset warning</button></p>
 {:else}
 <!-- LOGIN SECTION -->
 <section class="login-section">
-    <p><button type="button" class="login-btn" on:click={ (ev) => get_wallet_addr(ev) }>🔓 Log in with Web3</button></p>
+    <p><button type="button" class="login-btn" on:click={ (ev) => local_get_wallet_addr(ev) }>🔓 Log in with Web3</button></p>
     <span class="instruction">
       Ensure to have an Ethereum based wallet installed i.e MetaMask. Change the network and account in the wallet and 
       click the button again to update the app's state.
     </span>
+    <span>        network: {wallet.walletnetwork} </span>
+    <span>        address: {wallet.walletaddr} </span>
 </section>
 
 <!-- DASHBOARD SECTION -->
 <section class="dashboard-section">
-    {#if walletnetwork !== undefined && walletaddr !== undefined}
+    {#if wallet.walletnetwork !== undefined && wallet.walletaddr !== undefined}
     <h3 class="wallet-status">Wallet available</h3>
     <h4 class="wallet-address-heading">
       Wallet address:
-      <span class="typewriter">{networkname}({walletnetwork})</span> / 
-      <span class="typewriter">{walletaddr}</span>
+      <span class="typewriter">{wallet.networkname}({wallet.walletnetwork})</span> / 
+      <span class="typewriter">{wallet.walletaddr}</span>
     </h4>
-    {#if walletbalance !== undefined}
+    {#if wallet.walletbalance !== undefined}
     <h4 class="wallet-balance-heading">
      Balance:
-      <span class="wallet-balance">{walletbalance}</span>
+      <span class="wallet-balance">{wallet.walletbalance}</span>
     </h4>
     {/if}
-    <p><button type="button" on:click={ (ev) => get_wallet_balance(ev) }>refresh balance</button></p>
-    <p><button type="button" class="logout-btn" on:click={ () => wallet_logout() }>🔐 Log out</button></p>
+    <p><button type="button" on:click={ (ev) => local_get_wallet_balance(ev) }>refresh balance</button></p>
+    <p><button type="button" class="logout-btn" on:click={ () => local_wallet_logout() }>🔐 Log out</button></p>
     {/if}
 </section>
 
 <section class="action">
-    {#if walletnetwork !== undefined && walletaddr !== undefined}
+    {#if wallet.walletnetwork !== undefined && wallet.walletaddr !== undefined}
     <h3>Minting tokens</h3>
     <form on:submit={handleSubmit}>
         <label for="receiver">receiver</label>
@@ -201,3 +159,11 @@
 </section>
 {/if}
 
+<style>
+    #receiver {
+        width: 348px;
+    }
+    #amount {
+        width: 48px;
+    }
+</style>
