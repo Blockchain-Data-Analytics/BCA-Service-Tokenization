@@ -16,7 +16,7 @@ The ERC20 contract allows the following methods:
 ### administration methods
 These methods can only be called from the _serviceAccount_
 
-- setServiceAccount
+- setServiceAddress
 - setMinterAddress
 - setBurnerAddress
 
