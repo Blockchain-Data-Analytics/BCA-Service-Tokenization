@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// updating this file, and then reflect the change in the database:
+// npx prisma migrate dev --name <some description>
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 
+model Credits {
+  id       Int      @id @default(autoincrement())
+  owner_id Int
+  owner    Users    @relation(fields: [owner_id], references: [id])
+  amount   Decimal
+  created  DateTime @default(now())
+  txhash   String
+}
+
+model Debits {
+  id       Int      @id @default(autoincrement())
+  owner_id Int
+  owner    Users    @relation(fields: [owner_id], references: [id])
+  amount   Decimal
+  created  DateTime @default(now())
+  service  String
+  units    Decimal
+}
+
+model AdminAudit {
+  id      Int      @id @default(autoincrement())
+  user    String
+  amount  Decimal
+  action  String
+  target  String
+  txhash  String
+  created DateTime @default(now())
+}
+
+// 
+model Users {
+  id      Int       @id @default(autoincrement())
+  account String
+  email   String
+  created DateTime  @default(now())
+  updated DateTime  @updatedAt
+  Credits Credits[]
+  Debits  Debits[]
+  Service Service[]
+  Pricing Pricing[]
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  owner_id    Int
+  owner       Users    @relation(fields: [owner_id], references: [id])
+  amount      Decimal
+  created     DateTime @default(now())
+  description String
+  price_id    Int?
+  pricing     Pricing? @relation(fields: [price_id], references: [id])
+  updated     DateTime @updatedAt
+}
+
+model Pricing {
+  id        Int       @id @default(autoincrement())
+  owner_id  Int
+  owner     Users     @relation(fields: [owner_id], references: [id])
+  price     Decimal
+  tickprice Boolean
+  ticksecs  Decimal?
+  initquota Decimal?
+  freequota Decimal?
+  factor    Decimal?
+  updated   DateTime  @updatedAt
+  Service   Service[]
+}

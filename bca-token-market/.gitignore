@@ -1,0 +1,27 @@
+
+# Output
+.output
+.vercel
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+node_modules
+package-lock.json
+prisma/migrations
+
+# auth0
+auth0_config.js
+src/hooks.server.ts
