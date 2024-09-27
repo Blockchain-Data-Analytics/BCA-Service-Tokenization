@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { Web3 } from 'web3';
-    // import { PrismaClient } from '@prisma/client'
     import { createForm } from "svelte-forms-lib";
 
     import { contractAddress, contractABI } from "$lib/contract"
@@ -31,7 +30,7 @@
         reset_warning(wallet);
     }
 
-    async function mint_tokens(toAddress: string, amount: number) {
+    async function mint_tokens(toAddress: string, amount: number, useGas: number) {
         if (window.web3 && wallet.walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(contractABI, contractAddress);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
@@ -43,37 +42,19 @@
                 const decimals: number = Number(await contract.methods.decimals().call());
                 console.log("amount: " + (amount * (10 ** decimals)));
                 const gasPrice = await window.web3.eth.getGasPrice();
-                // const estimatedGas = await contract.methods.mint(toAddress, amount)
-                //     .estimateGas();
-                // console.log("estimated gas: " + estimatedGas);
+                var estimatedGas = useGas;
+                if (wallet.walletnetwork === "0x89") { // Polygon
+                    estimatedGas = await contract.methods.setServiceAddress(toAddress).estimateGas();
+                    console.log("estimated gas: " + estimatedGas);
+                }
                 const receipt = await contract.methods
                     .mint(toAddress, amount * (10 ** decimals))
                     .send({
                         from: wallet.walletaddr,
-                        gas: 80000, //estimatedGas,
+                        gas: estimatedGas,
                         gasPrice: gasPrice,
                     });
-                    // const prisma = new PrismaClient()
-                    // async function audit() {
-                    //     const log = await prisma.adminAudit.create({
-                    //         data: {
-                    //             user: wallet.walletaddr ?? "unk",
-                    //             amount: amount * (10 ** decimals),
-                    //             action: 'mint',
-                    //             target: toAddress,
-                    //             txhash: receipt.transactionHash.toString()
-                    //         },
-                    //     })
-                    //     console.log(log)
-                    // }
-                    // audit()
-                    //     .then(async () => {
-                    //         await prisma.$disconnect()
-                    //     })
-                    //     .catch(async (e) => {
-                    //         console.error(e)
-                    //         await prisma.$disconnect()
-                    //     })
+                console.log("Transaction Hash: " + receipt.transactionHash);
             } catch (error) {
                 console.error(error);
             }
@@ -83,11 +64,12 @@
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
             receiver: "0x590Ea4BadDdB5041fe220C0260Eb26060e9c3fB6",  // User1
-            amount: "100"
+            amount: "100",
+            gas: "75000"
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            mint_tokens(values.receiver, parseInt(values.amount));
+            mint_tokens(values.receiver, parseInt(values.amount), parseInt(values.gas));
         }
         });
 
@@ -153,6 +135,15 @@
           on:change={handleChange}
           bind:value={$form.amount}
         />
+        {#if wallet.walletnetwork !== "0x89" }
+        <label for="address">gas:</label>
+        <input
+          id="gas"
+          name="gas"
+          on:change={handleChange}
+          bind:value={$form.gas}
+        />
+        {/if}
         <button type="submit">Mint</button>
       </form>
     {/if}
@@ -165,5 +156,8 @@
     }
     #amount {
         width: 48px;
+    }
+    #gas {
+        width: 54px;
     }
 </style>

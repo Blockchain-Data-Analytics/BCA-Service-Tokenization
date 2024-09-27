@@ -31,12 +31,17 @@
         reset_warning(wallet);
     }
 
-    async function burn_tokens(fromAddress: string, amount: number) {
+    async function burn_tokens(fromAddress: string, amount: number, useGas: number) {
         if (window.web3 && wallet.walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(contractABI, contractAddress);
             try {
                 const decimals: number = Number(await contract.methods.decimals().call());
                 const gasPrice = await window.web3.eth.getGasPrice();
+                var estimatedGas = useGas;
+                if (wallet.walletnetwork === "0x89") { // Polygon
+                    estimatedGas = await contract.methods.setServiceAddress(toAddress).estimateGas();
+                    console.log("estimated gas: " + estimatedGas);
+                }
                 contract.methods.totalSupply().call((err, result) => {
                     if(err){
                         console.error('Error: ', err);
@@ -52,7 +57,7 @@
                     .burn(fromAddress, amount * (10 ** decimals))
                     .send({
                         from: wallet.walletaddr,
-                        gas: 80000, //estimatedGas,
+                        gas: estimatedGas,
                         gasPrice: gasPrice,
                     });
                 console.log("Transaction Hash: " + receipt.transactionHash);
@@ -65,11 +70,12 @@
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
             address: "0x..",
-            amount: "100"
+            amount: "100",
+            gas: "75000"
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            burn_tokens(values.address, parseInt(values.amount));
+            burn_tokens(values.address, parseInt(values.amount), parseInt(values.gas));
         }
         });
 
@@ -125,7 +131,7 @@
           name="address"
           on:change={handleChange}
           bind:value={$form.address}
-        />    
+        />
         <label for="amount">amount</label>
         <input
           id="amount"
@@ -133,6 +139,15 @@
           on:change={handleChange}
           bind:value={$form.amount}
         />
+        {#if wallet.walletnetwork !== "0x89" }
+        <label for="address">gas:</label>
+        <input
+          id="gas"
+          name="gas"
+          on:change={handleChange}
+          bind:value={$form.gas}
+        />
+        {/if}
         <button type="submit">Burn</button>
       </form>
     {/if}
@@ -145,5 +160,8 @@
     }
     #amount {
         width: 48px;
+    }
+    #gas {
+        width: 54px;
     }
 </style>
