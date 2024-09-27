@@ -31,7 +31,7 @@
         reset_warning(wallet);
     }
 
-    async function setBurnerAccount(toAddress: string) {
+    async function setBurnerAccount(toAddress: string, useGas: number) {
         if (window.web3 && wallet.walletaddr !== undefined) {
             const contract = new window.web3.eth.Contract(contractABI, contractAddress);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
@@ -41,9 +41,11 @@
                 await contract.methods.symbol().call().then(console.log);
                 await contract.methods.decimals().call().then(console.log);
                 const gasPrice = await window.web3.eth.getGasPrice();
-                const estimatedGas = await contract.methods.setBurnerAddress(toAddress)
-                    .estimateGas();
-                console.log("estimated gas: " + estimatedGas);
+                var estimatedGas = useGas;
+                if (wallet.walletnetwork === "0x89") { // Polygon
+                    estimatedGas = await contract.methods.setBurnerAddress(toAddress).estimateGas();
+                    console.log("estimated gas: " + estimatedGas);
+                }
                 const receipt = await contract.methods
                     .setBurnerAddress(toAddress)
                     .send({
@@ -60,11 +62,12 @@
 
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
-            address: "0x590Ea4B.. guessed ..26060e9c3fB6"
+            address: "0x590Ea4B.. guessed ..26060e9c3fB6",
+            gas: "45000"
         },
         onSubmit: values => {
             // alert(JSON.stringify(values));
-            setBurnerAccount(values.address);
+            setBurnerAccount(values.address, parseInt(values.gas));
         }
         });
 
@@ -114,13 +117,22 @@
     {#if wallet.walletnetwork !== undefined && wallet.walletaddr !== undefined}
     <h3>Change Burner Account</h3>
     <form on:submit={handleSubmit}>
-        <label for="address">address</label>
+        <label for="address">address:</label>
         <input
           id="address"
           name="address"
           on:change={handleChange}
           bind:value={$form.address}
-        />    
+        />
+        {#if wallet.walletnetwork !== "0x89" }
+        <label for="address">gas:</label>
+        <input
+          id="gas"
+          name="gas"
+          on:change={handleChange}
+          bind:value={$form.gas}
+        />
+        {/if}
         <button type="submit">Set Burner Address</button>
       </form>
     {/if}
@@ -130,5 +142,8 @@
 <style>
     #address {
         width: 348px;
+    }
+    #gas {
+        width: 54px;
     }
 </style>
