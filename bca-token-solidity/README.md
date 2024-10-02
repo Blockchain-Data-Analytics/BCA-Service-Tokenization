@@ -2,17 +2,9 @@
 
 ## setup
 
-npx hardhat init
+`npm install`
 
-(npm install @openzeppelin/contracts)
-
-npx hardhat compile
-
-REPORT_GAS=true npx hardhat test --typecheck
-
-> run a node locally:
-npx hardhat node
-
+`npx hardhat init`
 
 # Run the project
 
