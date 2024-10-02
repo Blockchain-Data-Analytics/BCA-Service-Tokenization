@@ -5,6 +5,7 @@
     import { createForm } from "svelte-forms-lib";
 
     import { contractAddress, contractABI } from "$lib/contract"
+    import { log } from "$lib/log"
 
     import { WalletInformation, reset_warning, get_wallet_addr, get_wallet_balance, wallet_logout } from '$lib/wallet'
 
@@ -54,7 +55,9 @@
                         gas: estimatedGas,
                         gasPrice: gasPrice,
                     });
-                console.log("Transaction Hash: " + receipt.transactionHash);
+
+                await ( log(wallet.walletaddr, 0, "setMinterAccount", toAddress, receipt.transactionHash) )
+
             } catch (error) {
                 console.error(error);
             }

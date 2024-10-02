@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Credits {
+  id       Int      @id @default(autoincrement())
+  amount   Decimal
+  created  DateTime @default(now())
+  txhash   String
+  owner_id Int
+  owner    Users    @relation(fields: [owner_id], references: [id])
+}
+
+model Debits {
+  id       Int      @id @default(autoincrement())
+  amount   Decimal
+  created  DateTime @default(now())
+  service  String
+  units    Decimal
+  owner_id Int
+  owner    Users    @relation(fields: [owner_id], references: [id])
+}
+
+model AdminAudit {
+  id      Int      @id @default(autoincrement())
+  user    String
+  amount  BigInt
+  action  String
+  target  String
+  created DateTime @default(now())
+  txhash  String
+}
+
+model Users {
+  id      Int       @id @default(autoincrement())
+  email   String
+  created DateTime  @default(now())
+  updated DateTime  @updatedAt
+  account String
+  Credits Credits[]
+  Debits  Debits[]
+  Pricing Pricing[]
+  Service Service[]
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  amount      Decimal
+  created     DateTime @default(now())
+  description String
+  price_id    Int?
+  updated     DateTime @updatedAt
+  owner_id    Int
+  owner       Users    @relation(fields: [owner_id], references: [id])
+  pricing     Pricing? @relation(fields: [price_id], references: [id])
+}
+
+model Pricing {
+  id        Int       @id @default(autoincrement())
+  price     Decimal
+  ticksecs  Decimal?
+  initquota Decimal?
+  freequota Decimal?
+  factor    Decimal?
+  updated   DateTime  @updatedAt
+  tickprice Boolean
+  owner_id  Int
+  owner     Users     @relation(fields: [owner_id], references: [id])
+  Service   Service[]
+}
