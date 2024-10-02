@@ -1,16 +1,16 @@
 
 # BCA Service Token
 
-## Version: 2024-09-18
-## Copyright: 2024 Alexander Diemand
-## License: GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
+### Version: 2024-10-02
+### Copyright: 2024 Alexander Diemand
+### [License](./LICENSE): GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
 
-### Documentation
+## Documentation
 
 [see documentation](./doc/README.md)
 
 
-### Overview
+## Overview
 
 This project is an evaluation of how to use ERC20 tokens on a blockchain to charge users for their usage of our services in micro-payments without incurring massive transaction fees.
 Such a setup shows large flexibility in creating new services and shows great potential for revenue streams from micro-payments.
@@ -18,12 +18,12 @@ Users benefit from keeping control over their budget of service usage costs and 
 Charging for services is done transparently on-chain.
 The user with a positive token balance has access to an agent that helps funding service usage: by time, using fixed budget, ...
 
-#### Why call the internal token GEEZ?
+### Why call the internal token GEEZ?
 Our services can be compared to mice which need some cheese from time to time to make them happy.
 We might call that GEEZ (GEZ), similar to Ethereum's GAS.
 
 
-### Principles & Ideas
+## Principles & Ideas
 
 - there is an on-chain service token (probably named "BCA") and an internal token (named "GEEZ") for micropayments
 - users aquire the service token using a fiat on-ramp service
