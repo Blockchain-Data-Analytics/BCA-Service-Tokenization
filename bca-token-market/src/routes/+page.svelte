@@ -1,8 +1,34 @@
-<h1>BCA Service Market</h1>
+<script lang="ts">
+    import { SignIn, SignOut } from "@auth/sveltekit/components"
+    import { page } from "$app/stores"
+</script>
 
-<h2>Users</h2>
-<h3><a href="/users">Manage your account</a></h3>
+<div class="w3-container w3-padding-32">
 
-
-<h2>Services</h2>
-<h3><a href="/services">Manage services</a></h3>
+  <h1>SvelteKit Auth Example</h1>
+  <div>
+    {#if $page.data.session}
+      {#if $page.data.session.user?.image}
+        <p><img
+          src={$page.data.session.user.image}
+          class="avatar"
+          alt="User Avatar"
+          width="20%"
+        /></p>
+      {/if}
+      <p><span class="signedInText">
+        <p><small>Signed in as</small></p>
+        <p><strong>{$page.data.session.user?.name ?? "User"}</strong>
+        {$page.data.session.user?.email ?? "Email"}</p>
+      </span></p>
+      <SignOut>
+        <div slot="submitButton" class="w3-button buttonPrimary">Sign out</div>
+      </SignOut>
+    {:else}
+      <p><span class="notSignedInText">You are not signed in</span></p>
+      <p><SignIn>
+        <div slot="submitButton" class="w3-button buttonPrimary">Sign in</div>
+      </SignIn></p>
+    {/if}
+  </div>
+</div>
