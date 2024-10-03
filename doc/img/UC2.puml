@@ -1,0 +1,272 @@
+Use cases for starting and stopping a service:
+@startuml UC2
+
+!theme bluegray
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user #pink;line:darkblue;line.bold;text:darkblue
+actor "Service Controller" as sc #lightgray;line:darkblue;line.bold;text:darkblue
+actor "Service Manager" as sm #lightgray;line:darkblue;line.bold;text:darkblue
+
+rectangle StartService {
+    usecase "requestService" as UCsrequp
+    usecase "setupService" as UCssetup
+    usecase "startService" as UCsstart
+    usecase "sendCredentials" as UCscreds
+}
+
+rectangle StopService {
+    usecase "shutdownService" as UCsreqdown
+    usecase "sunsetService" as UCssunset
+    usecase "stopService" as UCsstop
+}
+
+user -r.-> sm : call
+sm -r.-> sc : invoke
+
+user -u-> UCsrequp : request
+user -d-> UCsreqdown : shutdown
+
+sc -u-> UCscreds : create
+sc -u-> UCsstart : start
+sc -u-> UCssetup : setup
+
+sc -d-> UCsstop : stop
+sc -d-> UCssunset : sunset
+
+@enduml
+
+Starting a service:
+@startuml Seq-Service-Start
+
+!theme bluegray
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user order 1
+participant "Service Manager" as sm order 2
+participant "Service Controller" as sc order 3
+participant "Service" as sv order 4
+
+user -> sm : request service
+
+sm -> sc : start service
+
+sc -> sv : setup
+sc <-- sv : credentials
+sc -> sv : start
+
+sm <-- sc : credentials
+
+user <-- sm : credentials
+
+@enduml 
+
+Stopping a service:
+@startuml Seq-Service-Stop
+
+!theme bluegray
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user order 1
+participant "Service Manager" as sm order 2
+participant "Service Controller" as sc order 3
+participant "Service" as sv order 4
+
+user -> sm : shutdown service
+
+sm -> sc : stop service
+
+sc -> sv : stop
+
+sm <-- sc : acknowledgement
+
+user <-- sm : acknowledgement
+
+@enduml
+
+Charging for services:
+@startuml Seq-Service-Billing
+
+!theme bluegray
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user order 1
+participant "Accounting" as accounting order 2
+participant "Service Manager" as sm order 3
+
+user -> accounting :  credit
+
+user -> sm : request service
+
+accounting <-- sm : charge setup fee
+
+group "repeat: after each time period"
+accounting <-- sm : charge tick fee
+end
+
+user -> sm : shutdown service
+accounting <-- sm : charge last tick fee
+
+@enduml
+
+
+The interface a service controller needs to provide:
+@startuml Iface-Service-Controller
+
+interface Pricing {
+    -id: PricingId
+    +description: String
+    +period: Hours
+    +setupFee: Int
+    +tickFee: Int
+}
+
+interface Service {
+    -id: ServiceId
+    +name: String
+    +pricing: PricingId
+}
+
+interface Credentials {
+    -id: CredentialsId
+    +address: String
+    +port: Int
+    +protocol: TCP | UDP
+    +username: String
+    +password: String
+    +key: String
+}
+
+interface ServiceInstance {
+    -id: InstanceId
+    -service: ServiceId
+    -credentials: Credentials
+}
+
+interface Owner {
+    -id: OwnerId
+    +name: String
+    +email: String
+    -controllers: ControllerId[]
+    +list_controllers(): Ok ControllerId[] | Error Reason
+    +get_controller(ControllerId id): Ok ServiceController | Error Reason
+}
+
+interface IServiceController {
+    +setup(ServiceId id): Ok InstanceId | Error Reason
+    +start(InstanceId id): Ok Void | Error Reason
+    +stop(InstanceId id): Ok Void | Error Reason
+    +list_services(): Ok ServiceId[] | Error Reason
+    +get_service(ServiceId id): Ok Service | Error Reason
+    +get_instance(InstanceId id): Ok ServiceInstance | Error Reason
+    +get_pricing(PricingId id): Ok Pricing | Error Reason
+}
+class ServiceController {
+    -id: ControllerId
+    +owner: Provider
+    -services: ServiceId[]
+    +setup(ServiceId id): Ok InstanceId | Error Reason
+    +start(InstanceId id): Ok Void | Error Reason
+    +stop(InstanceId id): Ok Void | Error Reason
+    +list_services(): Ok ServiceId[] | Error Reason
+    +get_service(ServiceId id): Ok Service | Error Reason
+    +get_instance(InstanceId id): Ok ServiceInstance | Error Reason
+    +get_pricing(PricingId id): Ok Pricing | Error Reason
+}
+
+interface IServiceManager {
+    +request_service(UserId, ServiceId): Ok InstanceId | Error Reason
+    +shutdown_service(UserId, InstanceId): Ok Void | Error Reason
+}
+class ServiceManager {
+    +owner: Manager
+    -providers: [OwnerId,ConnectionId][]
+    #list_providers(): Ok [OwnerId,ConnectionId][] | Error Reason
+    #get_provider(OwnerId id): Ok Provider | Error Reason
+    #get_connection(ConnectionId id): Ok VpnConnection | Error Reason
+    +request_service(UserId, ServiceId): Ok InstanceId | Error Reason
+    +shutdown_service(UserId, InstanceId): Ok Void | Error Reason
+}
+
+class ServiceManager implements IServiceManager
+class ServiceController implements IServiceController
+class Manager implements Owner
+class Provider implements Owner
+
+interface VpnInterface {
+    -id: InterfaceId
+    +iface_name: String
+    +addr_mask: String
+    +port: Int
+}
+interface VpnConnection {
+    -id: ConnectionId
+    +client: OwnerId
+    +iface: InterfaceId
+    +addr_here: String
+    +endpoint: String
+    +port: Int
+    +key: String
+}
+
+Manager -d-* ServiceManager
+Provider -d-* ServiceController
+
+
+ServiceController -- "*" Service 
+ServiceController -- "*" ServiceInstance 
+ServiceController -- "*" Pricing 
+
+' ServiceInstance "*" -- "1" Service
+' Service -l- "1" Pricing
+
+ServiceInstance *-- Credentials
+
+VpnConnection -- "1" VpnInterface
+ServiceManager -- "*" VpnConnection
+
+@enduml
+
+
+Billling
+@startuml Iface-Billing
+
+interface IServiceManager {
+    +request_service(UserId, ServiceId): Ok InstanceId | Error Reason
+    +shutdown_service(UserId, InstanceId): Ok Void | Error Reason
+}
+class ServiceManager {
+    +owner: Manager
+    -accounting: AccountingDebit
+    -providers: [OwnerId,ConnectionId][]
+    -subscriptions: [UserId,InstanceId][]
+    #list_providers(): Ok [OwnerId,ConnectionId][] | Error Reason
+    #get_provider(OwnerId id): Ok Owner | Error Reason
+    #get_connection(ConnectionId id): Ok VpnConnection | Error Reason
+    +request_service(UserId, ServiceId): Ok InstanceId | Error Reason
+    +shutdown_service(UserId, InstanceId): Ok Void | Error Reason
+}
+
+class ServiceManager implements IServiceManager
+
+interface IAccounting {
+    +curr_balance(UserId): Ok Int | Error Reason
+    +credit(UserId, Int): Ok Int | Error Reason
+    +debit(UserId, InstanceId, Int): Ok Int | Error Reason
+}
+class AccountingDebit {
+    -ledger: [Date,UserId,InstanceId?,Int][]
+    +curr_balance(UserId): Ok Int | Error Reason
+    -credit(UserId, Int): Ok Int | Error Reason
+    +debit(UserId, InstanceId, Int): Ok Int | Error Reason
+}
+
+class AccountingDebit implements IAccounting
+
+ServiceManager *-- AccountingDebit
+
+@enduml
