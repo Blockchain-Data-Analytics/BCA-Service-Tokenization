@@ -27,11 +27,14 @@
 <div slot="submitButton" class="w3-button buttonPrimary">Sign out</div>
 </SignOut>
 
-{:else}
-    <p><span class="notSignedInText">You are not signed in</span></p>
-    <p><SignIn>
-        <div slot="submitButton" class="w3-button buttonPrimary">Sign in</div>
-    </SignIn></p>
+{#if $page.data.session.user}
+
+<h2>Your profile information</h2>
+    <p>id: {$page.data.session.user.id}</p>
+    <p>name: {$page.data.session.user.name}</p>
+    <p>email: {$page.data.session.user.email}</p>
+    <p>image: {$page.data.session.user.image}</p>
+{/if}
 {/if}
 
 </div>

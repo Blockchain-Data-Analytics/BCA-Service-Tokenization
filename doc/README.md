@@ -7,9 +7,14 @@
 
 ## The transactions involved
 
-[Transaction Flwo](./Flow.md)
+[Transaction Flow](./Flow.md)
 
 
 ## Design of the services
 
 [Services](./Services.md)
+
+
+## User authentication
+
+[User authentication](./UserAuth.md)
