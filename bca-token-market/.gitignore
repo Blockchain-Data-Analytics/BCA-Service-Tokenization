@@ -22,6 +22,3 @@ node_modules
 package-lock.json
 prisma/migrations
 
-# auth0
-auth0_config.js
-src/hooks.server.ts
