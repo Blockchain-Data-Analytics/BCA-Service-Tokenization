@@ -7,12 +7,14 @@ struct ControllerData {
     1: required i32 id,
     2: i32 owner,
     3: list<i32> serviceids,
+    4: string description,
 }
 
 struct ServiceData {
     1: required i32 id,
     2: string name,
     3: i32 pricingid,
+    4: string description,
 }
 
 typedef i16 hours

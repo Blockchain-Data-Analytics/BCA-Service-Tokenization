@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { SignIn, SignOut } from "@auth/sveltekit/components"
+    import { SignOut } from "@auth/sveltekit/components"
     import { page } from "$app/stores"
 </script>
 
@@ -7,8 +7,9 @@
 
 {#if $page.data.session}
 
-<a href="./preferences">Preferences</a>
-<a href="./subscriptions">Subscriptions</a>
+<a href="users/preferences">Preferences</a>
+<a href="users/subscriptions">Subscriptions</a>
+<a href="users/account">Account</a>
 
 {#if $page.data.session.user?.image}
 <p><img
@@ -28,12 +29,12 @@
 </SignOut>
 
 {#if $page.data.session.user}
-
 <h2>Your profile information</h2>
-    <p>id: {$page.data.session.user.id}</p>
-    <p>name: {$page.data.session.user.name}</p>
-    <p>email: {$page.data.session.user.email}</p>
-    <p>image: {$page.data.session.user.image}</p>
+<p>id: {$page.data.session.user.id}</p>
+<p>name: {$page.data.session.user.name}</p>
+<p>email: {$page.data.session.user.email}</p>
+<p>image: {$page.data.session.user.image}</p>
+<p><small>This session expires: {$page.data.session.expires}</small></p>
 {/if}
 {/if}
 
