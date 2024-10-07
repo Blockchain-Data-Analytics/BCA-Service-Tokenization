@@ -1,7 +1,7 @@
 Use cases for starting and stopping a service:
 @startuml UC2
 
-!theme bluegray
+!theme mars
 
 skinparam backgroundColor #ffffff
 
@@ -40,7 +40,7 @@ sc -d-> UCssunset : sunset
 Starting a service:
 @startuml Seq-Service-Start
 
-!theme bluegray
+!theme mars
 
 skinparam backgroundColor #ffffff
 
@@ -66,7 +66,7 @@ user <-- sm : credentials
 Stopping a service:
 @startuml Seq-Service-Stop
 
-!theme bluegray
+!theme mars
 
 skinparam backgroundColor #ffffff
 
@@ -90,7 +90,7 @@ user <-- sm : acknowledgement
 Charging for services:
 @startuml Seq-Service-Billing
 
-!theme bluegray
+!theme mars
 
 skinparam backgroundColor #ffffff
 
@@ -116,6 +116,8 @@ accounting <-- sm : charge last tick fee
 
 The interface a service controller needs to provide:
 @startuml Iface-Service-Controller
+
+!theme mars
 
 interface Pricing {
     -id: PricingId
@@ -170,6 +172,7 @@ class ServiceController {
     +start(InstanceId id): Ok Void | Error Reason
     +stop(InstanceId id): Ok Void | Error Reason
     +list_services(): Ok ServiceId[] | Error Reason
+    +list_instances(1:i32 userid): Ok ServiceId[] | Error Reason
     +get_service(ServiceId id): Ok Service | Error Reason
     +get_instance(InstanceId id): Ok ServiceInstance | Error Reason
     +get_pricing(PricingId id): Ok Pricing | Error Reason
@@ -192,6 +195,7 @@ class ServiceManager {
 class ServiceManager implements IServiceManager
 class ServiceController implements IServiceController
 class Manager implements Owner
+class User implements Owner
 class Provider implements Owner {
     -controllers: ControllerId[]
     +list_controllers(): Ok ControllerId[] | Error Reason
@@ -235,6 +239,8 @@ ServiceManager -- "*" VpnConnection
 
 Billling
 @startuml Iface-Billing
+
+!theme mars
 
 interface IServiceManager {
     +request_service(UserId, ServiceId): Ok InstanceId | Error Reason
