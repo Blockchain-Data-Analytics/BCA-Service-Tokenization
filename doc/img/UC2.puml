@@ -151,9 +151,6 @@ interface Owner {
     -id: OwnerId
     +name: String
     +email: String
-    -controllers: ControllerId[]
-    +list_controllers(): Ok ControllerId[] | Error Reason
-    +get_controller(ControllerId id): Ok ServiceController | Error Reason
 }
 
 interface IServiceController {
@@ -195,7 +192,11 @@ class ServiceManager {
 class ServiceManager implements IServiceManager
 class ServiceController implements IServiceController
 class Manager implements Owner
-class Provider implements Owner
+class Provider implements Owner {
+    -controllers: ControllerId[]
+    +list_controllers(): Ok ControllerId[] | Error Reason
+    +get_controller(ControllerId id): Ok ServiceController | Error Reason
+}
 
 interface VpnInterface {
     -id: InterfaceId
