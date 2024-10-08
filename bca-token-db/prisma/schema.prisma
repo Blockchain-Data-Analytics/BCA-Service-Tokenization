@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -19,7 +20,7 @@ model AdminAudit {
 
 model Account {
   id                Int      @id @default(autoincrement())
-  userId            Int
+  userId            String
   type              String
   provider          String
   providerAccountId String
@@ -44,7 +45,7 @@ enum UserRole {
 }
 
 model User {
-  id                    Int                    @id @default(autoincrement())
+  id                    String                 @id @default(uuid())
   name                  String?
   email                 String?                @unique
   emailVerified         DateTime?
@@ -63,12 +64,20 @@ model User {
   Controller            Controller[]
   Session               Session[]
   Instance              Instance[]
+  Preference            Preference?
+}
+
+model Preference {
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+  prefs  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
   id           Int       @id @default(autoincrement())
   sessionToken String?   @unique
-  userId       Int?
+  userId       String?
   expires      DateTime?
   createdAt    DateTime? @default(now())
   updatedAt    DateTime?
@@ -106,18 +115,18 @@ model TwoFactorToken {
 
 model TwoFactorConfirmation {
   id      Int      @id @default(autoincrement())
-  userId  Int      @unique
+  userId  String   @unique
   expires DateTime
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Service {
   id            Int        @id @default(autoincrement())
-  amount        Decimal
+  amount        Int
   created       DateTime   @default(now())
   updated       DateTime   @updatedAt
   description   String
-  owner_id      Int
+  owner_id      String
   owner         User       @relation(fields: [owner_id], references: [id])
   price_id      Int?
   pricing       Pricing?   @relation(fields: [price_id], references: [id])
@@ -131,7 +140,7 @@ model Instance {
   created     DateTime @default(now())
   updated     DateTime @updatedAt
   description String
-  userId      Int
+  userId      String
   user        User     @relation(fields: [userId], references: [id])
   service_id  Int
   service     Service  @relation(fields: [service_id], references: [id])
@@ -139,14 +148,14 @@ model Instance {
 
 model Pricing {
   id        Int       @id @default(autoincrement())
-  price     Decimal
-  ticksecs  Decimal?
-  initquota Decimal?
-  freequota Decimal?
-  factor    Decimal?
+  price     Int
+  ticksecs  Int?
+  initquota Int?
+  freequota Int?
+  factor    Int?
   updated   DateTime  @updatedAt
   tickprice Boolean
-  owner_id  Int
+  owner_id  String
   owner     User      @relation(fields: [owner_id], references: [id])
   Service   Service[]
 }
@@ -154,26 +163,27 @@ model Pricing {
 model Controller {
   id          String    @id @default(cuid())
   description String
-  owner_id    Int
+  owner_id    String
   owner       User      @relation(fields: [owner_id], references: [id])
   Service     Service[]
 }
 
 model Credits {
   id      Int      @id @default(autoincrement())
-  amount  Decimal
+  amount  BigInt
   created DateTime @default(now())
   txhash  String
-  user_id Int
+  user_id String
   user    User     @relation(fields: [user_id], references: [id])
 }
 
 model Debits {
   id      Int      @id @default(autoincrement())
-  amount  Decimal
+  amount  BigInt
   created DateTime @default(now())
   service String
-  units   Decimal
-  user_id Int
+  units   Int
+  description String
+  user_id String
   user    User     @relation(fields: [user_id], references: [id])
 }
