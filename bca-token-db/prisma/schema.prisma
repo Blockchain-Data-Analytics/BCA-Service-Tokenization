@@ -7,25 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Credits {
-  id       Int      @id @default(autoincrement())
-  amount   Decimal
-  created  DateTime @default(now())
-  txhash   String
-  owner_id Int
-  owner    Users    @relation(fields: [owner_id], references: [id])
-}
-
-model Debits {
-  id       Int      @id @default(autoincrement())
-  amount   Decimal
-  created  DateTime @default(now())
-  service  String
-  units    Decimal
-  owner_id Int
-  owner    Users    @relation(fields: [owner_id], references: [id])
-}
-
 model AdminAudit {
   id      Int      @id @default(autoincrement())
   user    String
@@ -36,40 +17,172 @@ model AdminAudit {
   txhash  String
 }
 
-model Users {
-  id      Int       @id @default(autoincrement())
+model Account {
+  id                Int      @id @default(autoincrement())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+enum UserRole {
+  Admin
+  Provider
+  User
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  name                  String?
+  email                 String?                @unique
+  emailVerified         DateTime?
+  image                 String?
+  password              String?
+  role                  UserRole               @default(User)
+  accounts              Account[]
+  isTwoFactorEnabled    Boolean                @default(false)
+  twoFactorConfirmation TwoFactorConfirmation?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @default(now())
+  Credits               Credits[]
+  Debits                Debits[]
+  Service               Service[]
+  Pricing               Pricing[]
+  Controller            Controller[]
+  Session               Session[]
+  Instance              Instance[]
+  Preference            Preference?
+}
+
+model Preference {
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+  prefs  String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           Int       @id @default(autoincrement())
+  sessionToken String?   @unique
+  userId       String?
+  expires      DateTime?
+  createdAt    DateTime? @default(now())
+  updatedAt    DateTime?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([userId], map: "userId")
+}
+
+model VerificationToken {
+  id      Int      @id @default(autoincrement())
   email   String
-  created DateTime  @default(now())
-  updated DateTime  @updatedAt
-  account String
-  Credits Credits[]
-  Debits  Debits[]
-  Pricing Pricing[]
-  Service Service[]
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model ResetPasswordToken {
+  id      Int      @id @default(autoincrement())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorToken {
+  id      Int      @id @default(autoincrement())
+  email   String
+  token   String   @unique
+  expires DateTime
+
+  @@unique([email, token])
+}
+
+model TwoFactorConfirmation {
+  id      Int      @id @default(autoincrement())
+  userId  String   @unique
+  expires DateTime
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Service {
+  id            Int        @id @default(autoincrement())
+  amount        Int
+  created       DateTime   @default(now())
+  updated       DateTime   @updatedAt
+  description   String
+  owner_id      String
+  owner         User       @relation(fields: [owner_id], references: [id])
+  price_id      Int?
+  pricing       Pricing?   @relation(fields: [price_id], references: [id])
+  controller_id String
+  controller    Controller @relation(fields: [controller_id], references: [id])
+  Instance      Instance[]
+}
+
+model Instance {
   id          Int      @id @default(autoincrement())
-  amount      Decimal
   created     DateTime @default(now())
-  description String
-  price_id    Int?
   updated     DateTime @updatedAt
-  owner_id    Int
-  owner       Users    @relation(fields: [owner_id], references: [id])
-  pricing     Pricing? @relation(fields: [price_id], references: [id])
+  description String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  service_id  Int
+  service     Service  @relation(fields: [service_id], references: [id])
 }
 
 model Pricing {
   id        Int       @id @default(autoincrement())
-  price     Decimal
-  ticksecs  Decimal?
-  initquota Decimal?
-  freequota Decimal?
-  factor    Decimal?
+  price     Int
+  ticksecs  Int?
+  initquota Int?
+  freequota Int?
+  factor    Int?
   updated   DateTime  @updatedAt
   tickprice Boolean
-  owner_id  Int
-  owner     Users     @relation(fields: [owner_id], references: [id])
+  owner_id  String
+  owner     User      @relation(fields: [owner_id], references: [id])
   Service   Service[]
+}
+
+model Controller {
+  id          String    @id @default(cuid())
+  description String
+  owner_id    String
+  owner       User      @relation(fields: [owner_id], references: [id])
+  Service     Service[]
+}
+
+model Credits {
+  id      Int      @id @default(autoincrement())
+  amount  BigInt
+  created DateTime @default(now())
+  txhash  String
+  user_id String
+  user    User     @relation(fields: [user_id], references: [id])
+}
+
+model Debits {
+  id      Int      @id @default(autoincrement())
+  amount  BigInt
+  created DateTime @default(now())
+  service String
+  units   Int
+  description String
+  user_id String
+  user    User     @relation(fields: [user_id], references: [id])
 }

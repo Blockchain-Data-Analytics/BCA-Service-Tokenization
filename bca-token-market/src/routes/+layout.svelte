@@ -7,9 +7,8 @@
     <a href="/">Home</a>
     {#if $page.data.session}
     <a href="/services">Services</a>
-    <a href="/users">Users</a>
     <div class="w3-right w3-hide-small">
-        <small>{$page.data.session.user?.name ?? "User"}</small>
+        <a href="/users"><small>{$page.data.session.user?.name ?? "User"}</small></a>
     </div>
     {/if}
     </div>
