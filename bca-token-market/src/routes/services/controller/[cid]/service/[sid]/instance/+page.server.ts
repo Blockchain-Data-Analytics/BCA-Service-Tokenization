@@ -2,7 +2,7 @@ import { type Actions, fail, redirect, json } from '@sveltejs/kit'
 import type { PageServerLoad } from './$types'
 
 import prisma from '$lib/server/prisma.js'
-import type { Controller } from '@prisma/client'
+import type { Instance } from '@prisma/client'
 
 export const load: PageServerLoad = async (event) => {
     const session = await event.locals.auth()
@@ -11,11 +11,15 @@ export const load: PageServerLoad = async (event) => {
       throw redirect(303, '/')
     }
 
-    const controllers: Controller[] = await prisma.controller.findMany({
-        where: { owner_id: session.user.id },
+    const controller_id = event.params.cid
+    const service_id = event.params.sid
+    const instances: Instance[] = await prisma.instance.findMany({
+        where: {
+          "service_id": parseInt(service_id)
+        },
       })
-        
-    return { session, controllers }
+  
+    return { session, instances, controller_id, service_id }
 }
 
 export const actions = {
@@ -25,18 +29,18 @@ export const actions = {
       throw redirect(303, '/')
     }
 
-    // const form = await event.request.formData();
     if (session?.user?.role !== "Provider") {
       return fail(400, { error: "wrong role" })
     }
     try {
-      const res = await prisma.controller.create({
+      const service_id = event.params.sid
+      const res = await prisma.instance.create({
         data: {
-          "owner_id": session?.user?.id,
-          "description": "add a new description here"
+          "service_id": parseInt(service_id),
+          "userId": session?.user?.id,
+          "description": "add a new description here",
         }
       });
-      // console.log("new controller: " + JSON.stringify(res,null,2))
       return {res}
     } catch (error) {
       return fail(422, { error: error.message });

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from "$app/stores"
     import { superForm } from "sveltekit-superforms/client"
-    import SuperDebug from "sveltekit-superforms/client/SuperDebug.svelte"
+    // import SuperDebug from "sveltekit-superforms/client/SuperDebug.svelte"
 
     export let data
     const { form, errors } = superForm(data.form)
@@ -13,7 +13,8 @@
 <div class="w3-container w3-padding-32">
 
     <p><a href="/services/controller/{data.controller_id}">controller</a>
-     - <a href="/services/controller/{data.controller_id}/service">services</a></p>
+     - <a href="/services/controller/{data.controller_id}/service">services</a>
+     - <a href="/services/controller/{data.controller_id}/service/{data.service_id}/instance">instances</a></p>
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service</h2>
 
     <form method="POST" class="w3-container">
@@ -58,7 +59,7 @@
         <p>{#if is_provider}<button type="submit" class="w3-btn w3-blue" formaction="?/update">save</button>{/if}</p>
     </form>
 </div>
-<div class="w3-container w3-gray">
+<!-- <div class="w3-container w3-gray">
     <SuperDebug data={form}/>
-</div>
+</div> -->
 {/if}

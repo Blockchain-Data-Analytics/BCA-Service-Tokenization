@@ -29,12 +29,15 @@
 </SignOut>
 
 {#if $page.data.session.user}
-<h2>Your profile information</h2>
-<p>id: {$page.data.session.user.id}</p>
-<p>name: {$page.data.session.user.name}</p>
-<p>email: {$page.data.session.user.email}</p>
-<p>image: {$page.data.session.user.image}</p>
-<p><small>This session expires: {$page.data.session.expires}</small></p>
+<h3>profile information</h3>
+<table class="w3-table w3-bordered">
+<tr><td>id:</td><td>{$page.data.session.user.id}</td></tr>
+<tr><td>name:</td><td>{$page.data.session.user.name}</td></tr>
+<tr><td>email:</td><td>{$page.data.session.user.email}</td></tr>
+<tr><td>role:</td><td>{$page.data.session.user.role}</td></tr>
+<tr><td>image:</td><td>{$page.data.session.user.image}</td></tr>
+<tr><td>session expires:</td><td>{$page.data.session.expires}</td></tr>
+</table>
 {/if}
 {/if}
 
