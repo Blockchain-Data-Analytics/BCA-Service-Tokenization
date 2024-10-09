@@ -13,7 +13,7 @@ export const load: PageServerLoad = async (event) => {
  
   const instances = await prisma.instance.findMany({
     where: { userId: session?.user?.id },
-    relationLoadStrategy: 'join', // or 'query'
+    // relationLoadStrategy: 'join', // or 'query'
     include: {
       service: true,
     },
