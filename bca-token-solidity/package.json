@@ -2,12 +2,13 @@
 	"name": "bca-token-solidity",
 	"version": "0.0.2",
 	"private": true,
-  "devDependencies": {
-    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.5",
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.13"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.0.2"
-  }
+	"devDependencies": {
+		"@nomicfoundation/hardhat-ignition-ethers": "^0.15.5",
+		"@nomicfoundation/hardhat-toolbox": "^5.0.0",
+		"hardhat": "^2.22.13",
+		"mocha": "^10.7.3"
+	},
+	"dependencies": {
+		"@openzeppelin/contracts": "^5.0.2"
+	}
 }
