@@ -8,22 +8,28 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 contract BCAServiceContract is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    IERC20 public tokToken;
+    // the price for launching the contract; will remain with the contract
+    // adjust for the various transaction costs depending on chain
+    uint256 public constant setupFee = 2 * 10 ** 17;
+
+    // will be set in the constructor
+    IERC20 public immutable tokToken;
+    uint256 public immutable tickPrice;
+    address public immutable providerAddress;
     uint256 public deposit;
     uint256 public retracted;
     uint256 public startTime;
     uint256 public endTime;
-    uint256 public tickPrice;
     address public userAddress;
-    address public providerAddress;
 
     event DepositMade(address user, uint256 amount);
-    event ServiceStopped(uint256 endTime);
+    event ServiceStopped(uint256 ticks);
     event Withdrawn(address recipient, uint256 amount);
     event Retracted(address recipient, uint256 amount);
 
     error AlreadySubscribed();
     error AlreadyStopped();
+    error InsufficientAmount(uint256 minimumAmount);
     error InsufficientBalance(uint256 availableBalance);
     error NotStarted();
     error UnAuthorized();
@@ -40,20 +46,35 @@ contract BCAServiceContract is ReentrancyGuard {
             revert AlreadySubscribed();
         }
 
-        // allowance for the amount must be given by sender
+        // first deposit pays the setup fee
+        if (userAddress == address(0) && amount < (setupFee + tickPrice)) {
+            revert InsufficientAmount(setupFee + tickPrice);
+        }
+
+        // cannot wake up the service once it has stopped
+        if (endTime != 0) {
+            revert AlreadyStopped();
+        }
+
+        // allowance for the amount must have been approved by the sender
         tokToken.safeTransferFrom(msg.sender, address(this), amount);
+        deposit += amount;
 
         // remember user who made first deposit (e.g. subscribed)
         if (userAddress == address(0)) {
             userAddress = msg.sender;
             startTime = block.timestamp;
+            deposit -= setupFee; // pay setup fee
         }
-        deposit += amount;
         emit DepositMade(msg.sender, amount);
     }
 
     function stop() external {
-        if (! (msg.sender == userAddress || msg.sender == providerAddress)) {
+        _stop(msg.sender);
+    }
+
+    function _stop(address from) private {
+        if (! (from == userAddress || from == providerAddress)) {
             revert UnAuthorized();
         }
         if (endTime != 0) {
@@ -61,15 +82,16 @@ contract BCAServiceContract is ReentrancyGuard {
         }
 
         endTime = block.timestamp;
-        emit ServiceStopped(endTime);
+        uint256 ticks = endTime - startTime;
+        emit ServiceStopped(ticks);
     }
 
     function balanceUser() public view returns (uint256) {
-        if (userAddress == address(0)) {
+        if (userAddress == address(0) || startTime == 0) {
             revert NotStarted();
         }
-        if (startTime == 0) {
-            revert NotStarted();
+        if (msg.sender != userAddress) {
+            revert UnAuthorized();
         }
 
         uint256 calcTime = endTime != 0 ? endTime : block.timestamp;
@@ -93,8 +115,14 @@ contract BCAServiceContract is ReentrancyGuard {
 
         uint256 calcTime = endTime != 0 ? endTime : block.timestamp;
         uint256 ticks = calcTime - startTime;
-        uint256 balance = ticks * tickPrice - retracted;
-        // tokToken.approve(providerAddress, balance);
+        uint256 balance = 0;
+        uint256 bal1 = ticks * tickPrice;
+        // cap the available balance
+        if (bal1 > deposit - retracted) {
+            balance = deposit - retracted;
+        } else {
+            balance = bal1;
+        }
         return balance;
     }
 
@@ -112,8 +140,8 @@ contract BCAServiceContract is ReentrancyGuard {
         emit Withdrawn(msg.sender, amount);
 
         // stop service?
-        if (deposit == 0) {
-            this.stop();
+        if (balance - amount <= tickPrice) {
+            _stop(msg.sender);
         }
     }
 
@@ -121,9 +149,15 @@ contract BCAServiceContract is ReentrancyGuard {
         if (msg.sender != providerAddress) {
             revert UnAuthorized();
         }
+
         uint256 balance = balanceProvider();
         if (balance < amount) {
             revert InsufficientBalance(balance);
+        }
+
+        // stop service?
+        if (deposit - retracted - amount < tickPrice) {
+           _stop(msg.sender);
         }
 
         retracted += amount;
