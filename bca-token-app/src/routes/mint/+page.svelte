@@ -83,6 +83,8 @@
         <meta name="description" content="wallet" />
 </svelte:head>
 
+<div class="w3-container w3-padding-32">
+
 <h1>BCA Tokens: minting</h1>
 
 {#if wallet.warning !== undefined}
@@ -152,6 +154,7 @@
     {/if}
 </section>
 {/if}
+</div>
 
 <style>
     #receiver {
