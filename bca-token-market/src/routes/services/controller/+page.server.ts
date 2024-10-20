@@ -11,9 +11,16 @@ export const load: PageServerLoad = async (event) => {
       throw redirect(303, '/')
     }
 
-    const controllers: Controller[] = await prisma.controller.findMany({
-        where: { owner_id: session.user.id },
-      })
+    let controllers: Controller[]
+    if (session?.user?.role == "Provider") {
+      controllers = await prisma.controller.findMany({
+          where: { owner_id: session.user.id },
+        })
+      } else {
+        controllers = await prisma.controller.findMany({
+          where: { is_public: true },
+        })
+      }
         
     return { session, controllers }
 }

@@ -46,7 +46,7 @@ export async function wallet_logout(wallet: WalletInformation): Promise<WalletIn
 
 export async function get_wallet_addr(wallet: WalletInformation, ev: any): Promise<WalletInformation> {
     if (window.web3) {
-        ev.target.setAttribute("disabled","disabled")
+        if (ev.target) { ev.target.setAttribute("disabled","disabled") }
         try {
             // get active network in wallet
             wallet = await get_wallet_chainid(wallet)
@@ -68,7 +68,7 @@ export async function get_wallet_addr(wallet: WalletInformation, ev: any): Promi
         } catch (error) {
             wallet.warning = "error while accessing wallet: " + error;
         }
-        ev.target.removeAttribute("disabled")
+        if (ev.target) { ev.target.removeAttribute("disabled") }
     } else {
         console.log("wallet not found")
         wallet.warning = "wallet not found"

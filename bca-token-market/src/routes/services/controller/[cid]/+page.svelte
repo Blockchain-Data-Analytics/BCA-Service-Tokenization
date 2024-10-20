@@ -15,7 +15,7 @@
     <p><a href="/services/controller">controllers</a></p>
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Controller</h2>
 
-    <form method="POST" class="w3-container">
+    <form method={is_provider ? "POST" : "GET"} class="w3-container">
         <label>
             id:
             <input name="id" id="id" autocomplete="off" class="w3-input" readonly bind:value={$form.id}/>
@@ -31,7 +31,9 @@
             owner:
             <input name="owner_id" id="owner" autocomplete="off" class="w3-input" readonly  bind:value={$form.owner_id}/>
         </label>
-        <p>{#if is_provider}<button type="submit" class="w3-btn w3-blue" formaction="?/update">save</button>{/if}</p>
+    {#if is_provider}
+        <p><button type="submit" class="w3-btn w3-blue" formaction="?/update">save</button></p>
+    {/if}
     </form>
 </div>
 <!-- <div class="w3-container w3-gray">

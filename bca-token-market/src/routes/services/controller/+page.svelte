@@ -15,7 +15,12 @@
     <table class="w3-table w3-striped">
          <tr><th>id</th><th>services</th><th>description</th><th>owner</th></tr>
          {#each data.controllers as controller}
-            <tr><td><i class="fa fa-edit"></i> <a href="/services/controller/{controller.id}">{controller.id.substring(0,6)}..{controller.id.substring(controller.id.length - 5)}</a></td>
+            <tr>
+            {#if is_provider}
+                <td><i class="fa fa-edit"></i> <a href="/services/controller/{controller.id}">{controller.id.substring(0,6)}..{controller.id.substring(controller.id.length - 5)}</a></td>
+            {:else}
+                <td>{controller.id.substring(0,6)}..{controller.id.substring(controller.id.length - 5)}</td>
+            {/if}
                 <td><i class="fa fa-search"></i> <a href="/services/controller/{controller.id}/service">list services</a></td>
                 <td>{controller.description}</td>
                 <td>{controller.owner_id}</td></tr>

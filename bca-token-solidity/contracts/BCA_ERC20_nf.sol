@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
@@ -76,28 +76,5 @@ contract BCAServiceToken is ERC20, AccessControl {
     function burn(address from, uint256 amount) public onlyRole(BURNER_ROLE) {
         require(from == serviceAddress, "Burning only allowed on service account");
         _burn(from, amount);
-    }
-
-    /**
-     * @dev Overrides the transfer function to only allow transfers to the service address.
-     * @param recipient The address to transfer tokens to (must be the service address).
-     * @param amount The amount of tokens to transfer.
-     * @return A boolean value indicating whether the operation succeeded.
-     */
-    function transfer(address recipient, uint256 amount) public virtual override returns (bool) {
-        require(recipient == serviceAddress, "Transfer only allowed to service address");
-        return super.transfer(recipient, amount);
-    }
-
-    /**
-     * @dev Overrides the transferFrom function to only allowance to the service address.
-     * @param sender The address to transfer tokens from.
-     * @param recipient The address to transfer tokens to (must be the service address).
-     * @param amount The amount of tokens to transfer.
-     * @return A boolean value indicating whether the operation succeeded.
-     */
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
-        require(recipient == serviceAddress, "Transfer only allowed to service address");
-        return super.transferFrom(sender, recipient, amount);
     }
 }

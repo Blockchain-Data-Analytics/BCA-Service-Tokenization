@@ -6,12 +6,13 @@
 
 `npx hardhat init`
 
-# Run the project
+# Run the tests
 
 ```sh
 npx hardhat compile
 npx hardhat test
 REPORT_GAS=true npx hardhat test
+npx hardhat coverage
 ```
 
 ### local test deployment

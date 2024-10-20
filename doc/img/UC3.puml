@@ -1,0 +1,31 @@
+@startuml UC3
+
+!theme mars
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user #pink;line:darkblue;line.bold;text:darkblue
+actor "Provider" as provider #lightgreen;line:darkblue;line.bold;text:darkblue
+' actor "Service Manager" as sm #lightgray;line:darkblue;line.bold;text:darkblue
+
+rectangle "Service Manager" {
+    usecase "services" as UCservice
+    usecase "log" as UClog
+    usecase "Fuel Station" as UCfuel
+    usecase "accounting" as UCaccount
+    usecase "preferences" as UCprefs
+}
+
+user --> UCservice
+user --> UClog
+user --> UCfuel
+user --> UCaccount
+user --> UCprefs
+
+provider -u-> UCservice
+provider -u-> UClog
+provider -u-> UCfuel
+provider -u-> UCaccount
+provider -u-> UCprefs
+
+@enduml

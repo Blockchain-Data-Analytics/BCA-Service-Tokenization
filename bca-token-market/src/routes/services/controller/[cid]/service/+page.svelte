@@ -29,7 +29,11 @@
          <tr><th>id</th><th>instances</th><th>created</th><th>updated</th><th>amount</th><th>description</th><th>pricing</th><th>owner</th><th>controller</th></tr>
          {#each data.services as service}
             <tr>
+            {#if is_provider}
                 <td><i class="fa fa-edit"></i> <a href="/services/controller/{data.controller_id}/service/{service.id}">{service.id}</a></td>
+            {:else}
+                <td>{service.id}</td>
+            {/if}
                 <td><i class="fa fa-search"></i> <a href="/services/controller/{data.controller_id}/service/{service.id}/instance">list instances</a></td>
                 <td>{date_formatter.format(service.created)}</td>
                 <td>{date_formatter.format(service.updated)}</td>
@@ -37,7 +41,11 @@
                 <td>{service.description}</td>
                 <td>{service.price_id}</td>
                 <td>{service.owner_id}</td>
+            {#if is_provider}
                 <td><i class="fa fa-arrow-right"></i> <a href="/services/controller/{service.controller_id}">{service.controller_id.substring(0,6)}..{service.controller_id.substring(service.controller_id.length - 5)}</a></td>
+            {:else}
+                <td>{service.controller_id.substring(0,6)}..{service.controller_id.substring(service.controller_id.length - 5)}</td>
+            {/if}
             </tr>
          {/each}
     </table>

@@ -12,29 +12,37 @@ export const load: PageServerLoad = async (event) => {
     }
 
     const controller_id = event.params.cid
-    const services: Service[] = await prisma.service.findMany({
+    let services: Service[]
+    if (session?.user?.role == "Provider") {
+      services = await prisma.service.findMany({
         where: {
           owner_id: session.user.id,
           controller_id
         },
       })
-      const locale = 'en';
-      const options: Intl.DateTimeFormatOptions = {
-        weekday: undefined,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+    } else {
+      services = await prisma.service.findMany({
+        where: {
+          controller_id
+        },
+      })
+    }
+    const locale = 'en';
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: undefined,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
 
-      };
-      const formatter = new Intl.DateTimeFormat(locale, options);
-      services.map((val: Service, index: number) => {
-        const formattedDate = formatter.format(val.created);
-        // console.log(` idx: ${index}  value: ${val.created} new: ${formattedDate} type: ${typeof(val.created)}`)
+    };
+    const formatter = new Intl.DateTimeFormat(locale, options);
+    services.map((val: Service, index: number) => {
+      const formattedDate = formatter.format(val.created);
+      // console.log(` idx: ${index}  value: ${val.created} new: ${formattedDate} type: ${typeof(val.created)}`)
     })
-        
     return { session, services, controller_id  }
 }
 
