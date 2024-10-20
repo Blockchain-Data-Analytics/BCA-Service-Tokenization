@@ -14,7 +14,7 @@ contract BCAServiceContract is ReentrancyGuard {
 
     // will be set in the constructor
     IERC20 public immutable tokToken;
-    uint256 public immutable tickPrice;
+    uint256 public immutable dayPrice;
     address public immutable providerAddress;
     uint256 public deposit;
     uint256 public retracted;
@@ -34,9 +34,9 @@ contract BCAServiceContract is ReentrancyGuard {
     error NotStarted();
     error UnAuthorized();
 
-    constructor(address _providerAddress, address _tokAddress, uint256 _tickPrice) {
+    constructor(address _providerAddress, address _tokAddress, uint256 _dayPrice) {
         tokToken = IERC20(_tokAddress);
-        tickPrice = _tickPrice;
+        dayPrice = _dayPrice;
         providerAddress = _providerAddress;
     }
 
@@ -47,8 +47,8 @@ contract BCAServiceContract is ReentrancyGuard {
         }
 
         // first deposit pays the setup fee
-        if (userAddress == address(0) && amount < (setupFee + tickPrice)) {
-            revert InsufficientAmount(setupFee + tickPrice);
+        if (userAddress == address(0) && amount < (setupFee + (dayPrice / 24))) {
+            revert InsufficientAmount(setupFee + (dayPrice / 24));
         }
 
         // cannot wake up the service once it has stopped
@@ -96,7 +96,7 @@ contract BCAServiceContract is ReentrancyGuard {
 
         uint256 calcTime = endTime != 0 ? endTime : block.timestamp;
         uint256 duration = calcTime - startTime;
-        uint256 paid = duration * tickPrice;
+        uint256 paid = duration * dayPrice / 24 / 3600;
 
         if (paid >= deposit) {
             return 0;
@@ -116,7 +116,7 @@ contract BCAServiceContract is ReentrancyGuard {
         uint256 calcTime = endTime != 0 ? endTime : block.timestamp;
         uint256 ticks = calcTime - startTime;
         uint256 balance = 0;
-        uint256 bal1 = ticks * tickPrice;
+        uint256 bal1 = ticks * dayPrice / 24 / 3600;
         // cap the available balance
         if (bal1 > deposit - retracted) {
             balance = deposit - retracted;
@@ -140,7 +140,7 @@ contract BCAServiceContract is ReentrancyGuard {
         emit Withdrawn(msg.sender, amount);
 
         // stop service?
-        if (balance - amount <= tickPrice) {
+        if (balance - amount <= dayPrice / 24 / 3600) {
             _stop(msg.sender);
         }
     }
@@ -156,7 +156,7 @@ contract BCAServiceContract is ReentrancyGuard {
         }
 
         // stop service?
-        if (deposit - retracted - amount < tickPrice) {
+        if (deposit - retracted - amount < dayPrice / 24 / 3600) {
            _stop(msg.sender);
         }
 

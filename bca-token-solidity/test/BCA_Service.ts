@@ -20,10 +20,10 @@ import {
 
         const Contract = await hre.ethers.getContractFactory("BCAServiceContract");
         const daily_price = 1n;  // 1 token per 24h
-        const tick_price = (daily_price * BigInt(10n**precision)) / 24n / 3600n;
-        assert(tick_price > 0n, "tick price must be > 0: " + (tick_price.toString()));
-        console.log(`tick price: ${tick_price}`)
-        const serviceContract = await Contract.deploy(provider, tokenContract.getAddress(), tick_price);
+        const day_price = (daily_price * BigInt(10n**precision));
+        assert(day_price > 0n, "tick price must be > 0: " + (day_price.toString()));
+        console.log(`tick price: ${day_price}`)
+        const serviceContract = await Contract.deploy(provider, tokenContract.getAddress(), day_price);
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
@@ -203,9 +203,9 @@ import {
         const block1 = BigInt(await time.increase(12 * 3600));
 
         // check the user's balance: should be ~ 0.5; will pay a tick until next tx
-        const ubal = await service.serviceContract.connect(service.user1).balanceUser() - await service.serviceContract.tickPrice();
+        const ubal = await service.serviceContract.connect(service.user1).balanceUser() - (await service.serviceContract.dayPrice() / 24n / 3600n);
         const rem = await service.serviceContract.deposit()
-        console.log(`user's balance: ${ubal}  deposit: ${rem}  tick price: ${await service.serviceContract.tickPrice()}`)
+        console.log(`user's balance: ${ubal}  deposit: ${rem}  24h price: ${await service.serviceContract.dayPrice()}`)
 
         // the user withdraws from the contract which stops the service
         expect(await service.serviceContract.connect(service.user1).withdrawUser(ubal)).to.emit(service.serviceContract, "ServiceStopped").withArgs('ticks');

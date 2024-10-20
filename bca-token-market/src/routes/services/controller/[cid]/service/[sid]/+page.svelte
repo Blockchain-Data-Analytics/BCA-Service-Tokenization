@@ -17,7 +17,10 @@
      - <a href="/services/controller/{data.controller_id}/service/{data.service_id}/instance">instances</a></p>
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service</h2>
 
-    <form method="POST" class="w3-container">
+    
+    <form 
+        method={is_provider ? "POST" : "GET"}
+        class="w3-container">
         <label>
             id:
             <input name="id" id="id" autocomplete="off" class="w3-input" readonly bind:value={$form.id}/>

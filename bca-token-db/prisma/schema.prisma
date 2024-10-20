@@ -135,14 +135,15 @@ model Service {
 }
 
 model Instance {
-  id          Int      @id @default(autoincrement())
-  created     DateTime @default(now())
-  updated     DateTime @updatedAt
-  description String
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  service_id  Int
-  service     Service  @relation(fields: [service_id], references: [id])
+  id            Int      @id @default(autoincrement())
+  created       DateTime @default(now())
+  updated       DateTime @updatedAt
+  description   String
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  service_id    Int
+  service       Service  @relation(fields: [service_id], references: [id])
+  contract_addr String?
 }
 
 model Pricing {
@@ -164,6 +165,7 @@ model Controller {
   description String
   owner_id    String
   owner       User      @relation(fields: [owner_id], references: [id])
+  is_public   Boolean   @default(false)
   Service     Service[]
 }
 
@@ -177,12 +179,12 @@ model Credits {
 }
 
 model Debits {
-  id      Int      @id @default(autoincrement())
-  amount  BigInt
-  created DateTime @default(now())
-  service String
-  units   Int
+  id          Int      @id @default(autoincrement())
+  amount      BigInt
+  created     DateTime @default(now())
+  service     String
+  units       Int
   description String
-  user_id String
-  user    User     @relation(fields: [user_id], references: [id])
+  user_id     String
+  user        User     @relation(fields: [user_id], references: [id])
 }
