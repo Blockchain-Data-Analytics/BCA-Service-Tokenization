@@ -14,6 +14,7 @@ export async function get_wallet_chainid(wallet: WalletInformation): Promise<Wal
             if (wallet.walletnetwork === "0x89") { wallet.networkname = "polygon" }
             if (wallet.walletnetwork === "0xa4b1") { wallet.networkname = "arbitrum" }
             if (wallet.walletnetwork === "0xa86a") { wallet.networkname = "avalanche" }
+            if (wallet.walletnetwork === "0x7a69") { wallet.networkname = "local" }
             if (wallet.walletnetwork === "0x13882") { wallet.networkname = "polygon amoy testnet" }
         })
         wallet.warning = undefined;

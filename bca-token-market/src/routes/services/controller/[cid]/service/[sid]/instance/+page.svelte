@@ -4,7 +4,8 @@
     import { Contract, Web3 } from 'web3';
     import { serviceContractABI, tokenContractABI, tokenContractAddress, contractAddresses  } from "$lib/contracts.js";
     import type { Instance } from '@prisma/client'
-    import { WalletInformation, reset_warning, get_wallet_addr, wallet_logout } from '$lib/wallet'
+    import { WalletInformation } from '$lib/wallet'
+    import Wallet from "$lib/components/wallet.svelte"
 
     export let data
 
@@ -15,6 +16,8 @@
             window.web3 = new Web3(window.ethereum);
         }
     })
+
+    $: has_wallet = !!wallet.walletaddr
 
     const is_provider = $page.data.session.user.role == "Provider"
 
@@ -36,7 +39,7 @@
         document.getElementById('subscribe01').style.display='block'
     }
     let contractdetails : { user_addr: string, day_price: bigint, deposit: bigint, start_time: bigint, end_time: bigint, balance: bigint, subscriber: string} | undefined = undefined
-    async function open_check(_instance: Instance) {
+    async function open_details(_instance: Instance) {
         instance = _instance
         contractdetails = await read_contract(instance.contract_addr)
         document.getElementById('check01').style.display='block'
@@ -46,25 +49,23 @@
     let error_msg = ""
 
     async function read_contract(contractAddress: string) {
-        if (window.web3 && contractAddress) {
-            if (! wallet.walletaddr) { wallet = await get_wallet_addr(wallet, {}); }
+        if (window.web3 && contractAddress && wallet.walletaddr) {
 
             let contract: Contract<typeof serviceContractABI> = new window.web3.eth.Contract(serviceContractABI, contractAddresses[contractAddress])
-            const user_addr = await contract.methods.userAddress().call()
-            const day_price = await contract.methods.dayPrice().call()
-            const deposit = await contract.methods.deposit().call()
-            const start_time = await contract.methods.startTime().call()
-            const end_time = await contract.methods.endTime().call()
-            const balance = 0n   //await contract.methods.balanceUser().send({from: wallet.walletaddr}).then(console.log);
-            return { user_addr, day_price, deposit, start_time, end_time, balance, subscriber: (user_addr == wallet.walletaddr ? 'you' : 'anybody') }
+            const user_addr: string = await contract.methods.userAddress().call()
+            const day_price: bigint = await contract.methods.dayPrice().call()
+            const deposit: bigint = await contract.methods.deposit().call()
+            const start_time: bigint = await contract.methods.startTime().call()
+            const end_time: bigint = await contract.methods.endTime().call()
+            const balance: bigint = 0n   //await contract.methods.balanceUser().send({from: wallet.walletaddr}).then(console.log);
+            return { user_addr, day_price, deposit, start_time, end_time, balance, subscriber: (user_addr.toLocaleLowerCase() == wallet.walletaddr?.toLocaleLowerCase() ? 'you' : 'anybody') }
         }
         return {}
     }
 
     async function deposit_tokens(tokens: number, ev: any) {
         console.log(`got ${tokens}`)
-        if (window.web3 && instance.contract_addr) {
-            if (! wallet.walletaddr) { wallet = await get_wallet_addr(wallet, {}); }
+        if (window.web3 && instance.contract_addr && wallet.walletaddr) {
 
             let token: Contract<typeof tokenContractABI> = new window.web3.eth.Contract(tokenContractABI, tokenContractAddress)
             const decimals: bigint = await token.methods.decimals().call()
@@ -97,9 +98,11 @@
 {#if $page.data.session}
 <div class="w3-container w3-padding-32">
 
-    <p><a href="/services/controller">controllers</a>
-     - <a href="/services/controller/{data.controller_id}/service">services</a></p>
-
+    <div class="w3-bar">
+            <a class="w3-btn w3-small" href="/services/controller">controllers</a>
+            <a class="w3-btn w3-small" href="/services/controller/{data.controller_id}/service">services</a>
+            <a class="w3-btn w3-small" href="#"><Wallet bind:wallet={wallet} /></a>
+    </div>
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Instances</h2>
 
     <table class="w3-table w3-striped">
@@ -109,8 +112,9 @@
             {#if is_provider }
                 <td><i class="fa fa-edit"></i> <a href="/services/controller/{data.controller_id}/service/{data.service_id}/instance/{instance.id}">{instance.id}</a></td>
             {:else}
-                <td><button type="button" on:click={() => open_subscribe(instance)}>subscribe {instance.id}</button>
-                    <button type="button" on:click={() => open_check(instance)}>check {instance.id}</button></td>
+                <td>{instance.id}
+                    <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_subscribe(instance)}>subscribe</button>
+                    <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_details(instance)}>details</button></td>
             {/if}
                 <td>{date_formatter.format(instance.created)}</td>
                 <td>{date_formatter.format(instance.updated)}</td>
@@ -140,7 +144,7 @@
             <h2>Subscribe to service</h2>
           </header>
           <div class="w3-container">
-            <p>Indicate the number of tokens you want to provide for the service:</p>
+            <p>Indicate the number of tokens you want to allocate for the service:</p>
             <p>{JSON.stringify(instance,null,2)}</p>
             <p><input type="number" width="28" bind:value={ntokens} min="1" max="999">
             <button type="button" on:click={ev => deposit_tokens(ntokens, ev)}>deposit</button>
@@ -170,11 +174,14 @@
             <!-- <tr><td>Start time:</td><td>{date_formatter.format(1000 * contractdetails.start_time)} {contractdetails.start_time}</td></tr> -->
             <tr><td>Start time:</td><td>{date_formatter.format(Number(contractdetails.start_time * 1000n))}</td></tr>
             <tr><td>End time:</td><td>{contractdetails.end_time > 0n ? date_formatter.format(Number(contractdetails.end_time * 1000n)) : ''}</td></tr>
+            {#if contractdetails.end_time == 0n}
+            <tr><td>Calc. end time:</td><td>{date_formatter.format(Number(contractdetails.start_time * 1000n + (contractdetails.deposit * 1000n * 24n * 3600n / contractdetails.day_price)))}</td></tr>
+            {/if}
             <tr><td>Price / 24h:</td><td>{contractdetails.day_price}</td></tr>
             <tr><td>Deposit:</td><td>{contractdetails.deposit}</td></tr>
             <tr><td>Balance:</td><td>{contractdetails.balance}</td></tr>
             </table>
-            {#if contractdetails.subscriber == 'you'}<p><button type="button" on:click={ev => cancel_service(instance, ev)}>cancel</button></p>{/if}
+            {#if contractdetails.subscriber == 'you'}<p><button type="button" class="w3-button w3-right" on:click={ev => cancel_service(instance, ev)}>cancel</button></p>{/if}
             {/if}
           </div>
           <footer class="w3-container w3-green">
