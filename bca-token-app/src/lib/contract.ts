@@ -1,9 +1,9 @@
 
 // // local hardhat node - testnet
-// // import deployed_address from "$lib/../../../bca-token-solidity/ignition/deployments/chain-31337/deployed_addresses.json"
+import deployed_address from "$lib/../../../bca-token-solidity/ignition/deployments/chain-31337/deployed_addresses.json"
 
 // // Amoy - Polygon testnet
-import deployed_address from "$lib/../../../bca-token-solidity/ignition/deployments/chain-80002/deployed_addresses.json"
+// import deployed_address from "$lib/../../../bca-token-solidity/ignition/deployments/chain-80002/deployed_addresses.json"
 
 export const contractAddress: string = deployed_address["BCA_Token#BCAServiceToken"]
 

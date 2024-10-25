@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "solidity-coverage";
 
 const { vars } = require("hardhat/config");
 const INFURA_API_KEY = vars.get("INFURA_API_KEY");

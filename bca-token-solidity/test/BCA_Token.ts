@@ -70,13 +70,13 @@ describe("Ownership", function () {
 
     expect(await tokenContract.connect(owner).setServiceAddress(user1.address));
     // check that the previous account will have its role revoked
-    expect(tokenContract.connect(owner).setServiceAddress(user2.address)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(owner).setServiceAddress(user2.address)).to.be.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
     // somebody else cannot do this
-    expect(tokenContract.connect(user2).setServiceAddress(user1.address)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user2).setServiceAddress(user1.address)).to.be.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
     // further pass the role to some other account
     expect(await tokenContract.connect(user1).setServiceAddress(user2.address));
     // check that the previous account will have its role revoked
-    expect(tokenContract.connect(user1).setServiceAddress(user2.address)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user1).setServiceAddress(user2.address)).to.be.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
   });
 });
 
@@ -86,7 +86,7 @@ describe("Minting", function () {
 
     expect(await tokenContract.connect(minter).mint(user1.address, 100000000)).to.changeTokenBalance(tokenContract, user1, +100000000);
     expect(await tokenContract.connect(minter).totalSupply()).to.equal(100000000);
-    expect(tokenContract.connect(user2).mint(user1.address, 999999999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user2).mint(user1.address, 999999999999)).to.be.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
 
     // change of minter address
     expect(await tokenContract.connect(owner).setMinterAddress(user2.address));
@@ -104,7 +104,7 @@ describe("Transfer", function () {
     expect(await tokenContract.connect(user2).transfer(tokenContract.serviceAddress(), 20000000)).to.changeTokenBalances(tokenContract, [user2,tokenContract.serviceAddress()], [-20000000,+20000000]);
     expect(await tokenContract.connect(burner).burn(tokenContract.serviceAddress(), 70000000)).to.changeTokenBalance(tokenContract, tokenContract.serviceAddress(), -70000000);
 
-    expect(tokenContract.connect(user2).transfer(user1.address, 999999999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user2).transfer(user1.address, 999999999999)).to.be.revertedWithCustomError(tokenContract, "ERC20InsufficientBalance");
   });
 });
 
@@ -115,9 +115,10 @@ describe("TransferFrom", function () {
     expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(tokenContract, user2, +100000000);
 
     // cannot use "transferFrom" as no allowance available - use "transfer"
-    expect(tokenContract.connect(user2).transferFrom(user2.address,tokenContract.serviceAddress(), 50000000)).to.revertedWithCustomError(tokenContract, "ERC20InsufficientAllowance");
-    // cannot give allowance to another user
-    expect(tokenContract.connect(user2).transferFrom(user2.address,user1.address, 2999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user2).transferFrom(user2.address,tokenContract.serviceAddress(), 50000000)).to.be.revertedWithCustomError(tokenContract, "ERC20InsufficientAllowance");
+    await tokenContract.connect(user2).approve(user1, 3000000);
+    expect(await tokenContract.connect(user1).transferFrom(user2.address, user1.address, 2999999)).to.changeTokenBalances(tokenContract, [user2,user1], [-2999999,+2999999]);
+
   });
 });
 

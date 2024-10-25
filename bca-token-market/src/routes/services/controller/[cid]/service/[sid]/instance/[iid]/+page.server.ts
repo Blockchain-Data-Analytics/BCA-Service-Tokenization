@@ -14,7 +14,8 @@ const instanceSchema = z.object({
     updated: z.date(),
     description: z.string().min(2),
     userId: z.string().min(2),
-    service_id: z.nullable(z.number()),
+    service_id: z.number(),
+    contract_addr: z.nullable(z.string()),
   })
   
 export const load: PageServerLoad = async (event) => {
@@ -45,7 +46,7 @@ export const actions = {
 
       const form = await superValidate(event, zod(instanceSchema));
       try {
-        console.log("update: " + JSON.stringify(form.data,null,2))
+        // console.log("update: " + JSON.stringify(form.data,null,2))
         const res = await prisma.instance.update({
             where: {
                 id: form.data.id

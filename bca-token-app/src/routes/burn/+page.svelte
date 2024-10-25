@@ -38,7 +38,7 @@
             try {
                 const decimals: number = Number(await contract.methods.decimals().call());
                 const gasPrice = await window.web3.eth.getGasPrice();
-                var estimatedGas = useGas;
+                let estimatedGas = useGas;
                 if (wallet.walletnetwork === "0x89") { // Polygon
                     estimatedGas = await contract.methods.setServiceAddress(toAddress).estimateGas();
                     console.log("estimated gas: " + estimatedGas);
@@ -88,6 +88,8 @@
         <title>BCA Wallet: burning tokens</title>
         <meta name="description" content="wallet" />
 </svelte:head>
+
+<div class="w3-container w3-padding-32">
 
 <h1>BCA Tokens: burning</h1>
 
@@ -156,6 +158,7 @@
     {/if}
 </section>
 {/if}
+</div>
 
 <style>
     #address {

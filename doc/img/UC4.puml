@@ -1,0 +1,143 @@
+@startuml UC4
+
+!theme mars
+
+skinparam backgroundColor #ffffff
+
+actor "User" as user #pink;line:darkblue;line.bold;text:darkblue
+actor "Provider" as provider #lightgreen;line:darkblue;line.bold;text:darkblue
+
+rectangle "BCA Service Manager" as SM {
+    usecase "Fuel Station" as UCfuel
+    usecase "preferences" as UCprefs
+}
+
+rectangle "BCA Service Controller" as SC {
+    usecase "Automation" as UCauto
+}
+
+rectangle "On-Chain" as OC {
+    usecase "service smart contract" as UCcontract
+}
+
+
+user --> SM
+user -r-> OC
+
+provider -u-> SM
+provider -u-> SC
+SC -u-> OC
+
+@enduml
+
+@startuml Seq-Service-Tokenization
+
+!theme mars
+
+skinparam backgroundColor #ffffff
+
+actor "Provider" as provider order 1
+actor "User" as user order 5
+' participant "Token" as tk order 3
+participant "BCA Service\nController" as sc order 2
+participant "Smart\nContract" as sm order 4
+participant "Service" as sv order 3
+
+' provider -> tk : mint service token
+provider -> sc : create new service
+activate sc
+
+sc -> sm : deploy smart contract
+activate sm
+
+user -> sm : deposit fee (subscribe service)
+
+sc -> sv : setup
+activate sv
+sc <-- sv : credentials
+
+sc -> sm : register credentials
+user -> sm : reveal credentials
+user <-- sm : credentials
+
+user -> sv : use service
+
+sc -> sm : transfer fee
+sc <-- sm : µ-payment
+
+user -> sm : deposit fee
+
+sc -> sm : transfer fee
+sc <-- sm : µ-payment
+
+user -> sm : deposit fee
+
+user -> sv : use service
+
+sc -> sm : transfer fee
+sc <-- sm : µ-payment
+
+user -> sm : stop
+
+user -> sm : transfer deposit (rest)
+
+user <-- sm : deposit (rest)
+
+sc -> sv : tear down
+deactivate sv
+
+sc -> sm : claim fees
+
+@enduml
+
+@startuml Class-Service-Contract
+
+!theme mars
+
+skinparam backgroundColor #ffffff
+
+class ServiceContract {
+    admin_addr : address
+    user_addr : address
+    tick_price : int64
+    setup_price : int64
+    timestamp0 : int64
+    timestamp1 : int64
+    deposit : int64
+    retracted : int64
+    --
+    int64 transfer(dest: address, value: int64)
+    int64 stop()
+    bool is_setup()
+    bool is_running()
+    bool is_stopped()
+    -- by user --
+    int64 balance_user()
+    byte32 reveal_credentials()
+    int64 deposit(value: int64)
+    -- by admin --
+    int64 balance_provider()
+    void register_credentials(creds: byte32)
+    void register_user()
+}
+
+@enduml
+
+@startuml SM-Service-Contract
+
+!theme mars
+
+skinparam backgroundColor #ffffff
+
+hide empty description
+[*] -> Setup
+
+Setup -r-> Running 
+Setup -d-> Stopped
+Running -d-> Stopped
+
+Stopped --> [*]
+Stopped -l-> Reset 
+Reset -u-> Setup
+
+@enduml

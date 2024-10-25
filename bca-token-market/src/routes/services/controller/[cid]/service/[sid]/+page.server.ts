@@ -32,7 +32,7 @@ export const load: PageServerLoad = async (event) => {
 
     const form = await superValidate(service, zod(serviceSchema));
 
-    var pricing: Pricing|null = null
+    let pricing: Pricing|null = null
     if (service?.price_id) {
       pricing = await prisma.pricing.findUnique({
         where: { id: service?.price_id },
