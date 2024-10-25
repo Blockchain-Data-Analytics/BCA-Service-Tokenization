@@ -21,7 +21,7 @@ export const load = (async (e: ServerLoadEvent) => {
             created: 'desc',
         }
     });
-    var results : LogEntry[] = [];
+    let results : LogEntry[] = [];
     for (const [idx, e] of logentries.entries()) {
         results.push({
             id: e.id,

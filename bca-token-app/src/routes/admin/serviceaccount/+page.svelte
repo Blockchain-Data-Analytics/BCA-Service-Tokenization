@@ -42,7 +42,7 @@
                 // await contract.methods.symbol().call().then(console.log);
                 // await contract.methods.decimals().call().then(console.log);
                 const gasPrice = await window.web3.eth.getGasPrice();
-                var estimatedGas = useGas;
+                let estimatedGas = useGas;
                 if (wallet.walletnetwork === "0x89") { // Polygon
                     estimatedGas = await contract.methods.setServiceAddress(toAddress).estimateGas();
                     console.log("estimated gas: " + estimatedGas);

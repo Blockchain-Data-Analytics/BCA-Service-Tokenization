@@ -72,10 +72,10 @@
             console.log(`decimals: ${decimals}`)
             let contract: Contract<typeof serviceContractABI> = new window.web3.eth.Contract(serviceContractABI, contractAddresses[instance.contract_addr])
             const user_addr = await contract.methods.userAddress().call();
-            if (user_addr && BigInt(user_addr) != 0n) {
-                error_msg = "service already subscribed by a user: " + user_addr
-                return
-            }
+            // if (user_addr && BigInt(user_addr) != 0n) {
+            //     error_msg = "service already subscribed by a user: " + user_addr
+            //     return
+            // }
             // approve the token amount
             const one_token: bigint = 10n**(decimals);
             let estimatedGas = await token.methods.approve(contractAddresses[instance.contract_addr], BigInt(tokens) * one_token).estimateGas()
@@ -109,18 +109,18 @@
          <tr><th>id</th><th>created</th><th>updated</th><th>description</th><th>service</th><th>user</th></tr>
          {#each data.instances as instance}
             <tr>
-            {#if is_provider }
-                <td><i class="fa fa-edit"></i> <a href="/services/controller/{data.controller_id}/service/{data.service_id}/instance/{instance.id}">{instance.id}</a></td>
-            {:else}
-                <td>{instance.id}
-                    <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_subscribe(instance)}>subscribe</button>
-                    <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_details(instance)}>details</button></td>
+              <td><a href="/services/controller/{data.controller_id}/service/{data.service_id}/instance/{instance.id}"><i class="fa fa-edit"></i> {instance.id}</a></td>
+            {#if !is_provider }
+              <td>{instance.id}
+                  <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_subscribe(instance)}>deposit</button>
+                  <button type="button" class="w3-button {has_wallet ? "w3-blue" : 'w3-disabled'}" on:click={() => has_wallet && open_details(instance)}>details</button></td>
             {/if}
-                <td>{date_formatter.format(instance.created)}</td>
-                <td>{date_formatter.format(instance.updated)}</td>
-                <td>{instance.description}</td>
-                <td><i class="fa fa-arrow-right"></i> <a href="/services/controller/{data.controller_id}/service/{instance.service_id}">{instance.service_id}</a></td>
-                <td>{instance.userId}</td></tr>
+              <td>{date_formatter.format(instance.created)}</td>
+              <td>{date_formatter.format(instance.updated)}</td>
+              <td>{instance.description}</td>
+              <td><a href="/services/controller/{data.controller_id}/service/{instance.service_id}"><i class="fa fa-arrow-right"></i> {instance.service_id}</a></td>
+              <td>{instance.userId}</td>
+            </tr>
          {/each}
     </table>
     <div class="w3-container">

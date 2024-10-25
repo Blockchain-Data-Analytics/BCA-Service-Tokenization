@@ -15,7 +15,7 @@
         wallet = await get_wallet_addr(wallet, ev)
     }
     async function logout_wallet() {
-        await wallet_logout(wallet)
+        wallet = await wallet_logout(wallet)
     }
 </script>
 
