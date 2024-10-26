@@ -1,0 +1,25 @@
+name: Solidity Contract Testing
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [ 22 ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Use Nodejs
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node }}
+    - name: Setup node_modules
+      run: npm install
+      working-directory: bca-token-solidity
+    - name: Compile contracts
+      run: npx hardhat compile
+      working-directory: bca-token-solidity
+    - name: Test contracts
+      run: npx hardhat test
+      working-directory: bca-token-solidity
+

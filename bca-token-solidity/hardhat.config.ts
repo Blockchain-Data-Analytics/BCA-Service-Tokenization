@@ -1,11 +1,12 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "solidity-coverage";
+import dotenv from "dotenv";
+dotenv.config();
 
-const { vars } = require("hardhat/config");
-const INFURA_API_KEY = vars.get("INFURA_API_KEY");
-const POLYGON_PRIVATE_KEY = vars.get("POLYGON_PRIVATE_KEY");
-const AMOY_PRIVATE_KEY = vars.get("AMOY_PRIVATE_KEY");
+const INFURA_API_KEY = process.env.INFURA_API_KEY ?? 'missing';
+const POLYGON_PRIVATE_KEY = process.env.POLYGON_PRIVATE_KEY ?? '1234567890123456789012345678901234567890123456789012345678901234';
+const AMOY_PRIVATE_KEY = process.env.AMOY_PRIVATE_KEY ?? '1234567890123456789012345678901234567890123456789012345678901234';
 
 
 const config: HardhatUserConfig = {
