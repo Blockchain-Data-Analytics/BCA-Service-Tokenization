@@ -1,0 +1,54 @@
+name: Node Audit
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  auditing:
+    name: npm audit
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [ 22 ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Use Nodejs
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node }}
+    - name: install dependencies 1
+      run: npm install
+      working-directory: bca-token-market
+    - name: audit-bca-token-market
+      uses: oke-py/npm-audit-action@v2
+      with:
+        audit_level: moderate
+        working_directory: bca-token-market
+    - name: install dependencies 2
+      run: npm install
+      working-directory: bca-token-db
+    - name: audit-bca-token-db
+      uses: oke-py/npm-audit-action@v2
+      with:
+        audit_level: moderate
+        working_directory: bca-token-db
+    - name: install dependencies 3
+      run: npm install
+      working-directory: bca-token-app
+    - name: audit-bca-token-app
+      uses: oke-py/npm-audit-action@v2
+      with:
+        audit_level: moderate
+        working_directory: bca-token-app
+    - name: install dependencies 4
+      run: npm install
+      working-directory: bca-token-solidity
+    - name: audit-bca-token-solidity
+      uses: oke-py/npm-audit-action@v2
+      with:
+        audit_level: moderate
+        working_directory: bca-token-solidity
