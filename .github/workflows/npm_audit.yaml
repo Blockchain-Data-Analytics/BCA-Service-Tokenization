@@ -22,7 +22,7 @@ jobs:
         node-version: ${{ matrix.node }}
     - name: install dependencies 1
       run: npm ci
-      working_directory: bca-token-solidity
+      working-directory: bca-token-solidity
     - name: audit-bca-token-solidity
       uses: oke-py/npm-audit-action@v2
       with:
@@ -30,7 +30,7 @@ jobs:
         working_directory: bca-token-solidity
     - name: install dependencies 2
       run: npm ci
-      working_directory: bca-token-market
+      working-directory: bca-token-market
     - name: audit-bca-token-market
       uses: oke-py/npm-audit-action@v2
       with:
@@ -38,7 +38,7 @@ jobs:
         working_directory: bca-token-market
     - name: install dependencies 3
       run: npm ci
-      working_directory: bca-token-db
+      working-directory: bca-token-db
     - name: audit-bca-token-db
       uses: oke-py/npm-audit-action@v2
       with:
@@ -46,7 +46,7 @@ jobs:
         working_directory: bca-token-db
     - name: install dependencies 4
       run: npm ci
-      working_directory: bca-token-app
+      working-directory: bca-token-app
     - name: audit-bca-token-app
       uses: oke-py/npm-audit-action@v2
       with:
