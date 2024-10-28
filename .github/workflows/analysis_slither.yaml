@@ -1,0 +1,31 @@
+name: Static Analysis of Contracts
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Run Slither
+      uses: crytic/slither-action@v0.4.0
+      id: slither
+      with:
+        node-version: 22
+        sarif: results.sarif
+        fail-on: high
+        target: bca-token-solidity
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.slither.outputs.sarif }}
