@@ -1,0 +1,7 @@
+{
+"remappings": [
+    "@openzeppelin/contracts/token/ERC20/IERC20.sol=node_modules/@openzeppelin/contracts/interfaces/IERC20.sol", 
+    "@openzeppelin/contracts/token/ERC20=node_modules/@openzeppelin/contracts/token/ERC20", 
+    "@openzeppelin/contracts/utils=node_modules/@openzeppelin/contracts/utils", 
+    "@openzeppelin/contracts/access=node_modules/@openzeppelin/contracts/access" ]
+}
