@@ -46,14 +46,22 @@ skinparam backgroundColor #ffffff
 
 actor "User" as user order 1
 participant "Service Manager" as sm order 2
-participant "Service Controller" as sc order 3
-participant "Service" as sv order 4
+participant "Service Smart Contract" as co order 3
+participant "Service Controller" as sc order 4
+participant "Service" as sv order 5
 
 user -> sm : request service
 
-sm -> sc : start service
+sm -> co : deploy
+activate co
 
+co --> sc : event Create
+
+user -> co : deposit
+
+co --> sc : event Deposit
 sc -> sv : setup
+activate sv
 sc <-- sv : credentials
 sc -> sv : start
 
@@ -71,48 +79,21 @@ Stopping a service:
 skinparam backgroundColor #ffffff
 
 actor "User" as user order 1
-participant "Service Manager" as sm order 2
+participant "Service Smart Contract" as sm order 2
 participant "Service Controller" as sc order 3
 participant "Service" as sv order 4
 
-user -> sm : shutdown service
+activate sm
+activate sv
+user -> sm : stop
 
-sm -> sc : stop service
+sm --> sc : stop event
+' deactivate sm
 
 sc -> sv : stop
-
-sm <-- sc : acknowledgement
-
-user <-- sm : acknowledgement
+deactivate sv
 
 @enduml
-
-Charging for services:
-@startuml Seq-Service-Billing
-
-!theme mars
-
-skinparam backgroundColor #ffffff
-
-actor "User" as user order 1
-participant "Accounting" as accounting order 2
-participant "Service Manager" as sm order 3
-
-user -> accounting :  credit
-
-user -> sm : request service
-
-accounting <-- sm : charge setup fee
-
-group "repeat: after each time period"
-accounting <-- sm : charge tick fee
-end
-
-user -> sm : shutdown service
-accounting <-- sm : charge last tick fee
-
-@enduml
-
 
 The interface a service controller needs to provide:
 @startuml Iface-Service-Controller

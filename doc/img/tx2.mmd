@@ -1,26 +1,19 @@
 graph LR
 
     style tx2 fill:#844
-    style Client0 fill:#444
-    style Client1 fill:#444
-    style Client2 fill:#444
-    style ServiceAccount0 fill:#559
-    style ServiceAccount1 fill:#559
+    style User0 fill:#444
+    style User1 fill:#444
+    style ServiceContract0 fill:#559
+    style ServiceContract1 fill:#559
 
     subgraph on-chain
-    %% tx2 - client reserves tokens for service charge
+    %% tx2 - user reserves tokens for service charge
     tx2("tx2")
     %% inputs
-    Client0("Client: BCA1 25") -->|"transfer 5"| tx2
-    ServiceAccount0("Service Account: BCA1 0") --> tx2
+    User0("User: BCA1 25") -->|"deposit 5"| tx2
+    ServiceContract0("Service Contract: BCA1 0") --> tx2
 
     %% outputs
-    tx2 --> Client1("Client: BCA1 20")
-    tx2 --> ServiceAccount1("Service Account: BCA1 5")
+    tx2 --> User1("User: BCA1 20")
+    tx2 --> ServiceContract1("Service Contract: BCA1 5")
     end
-    subgraph off-chain
-    direction LR
-    Client2("Client: Geez 5")
-    end
-
-    on-chain -.-> off-chain

@@ -3,9 +3,9 @@
 
 ## ERC20 Service Contract
 
-
 ![Contract interactions](./img/UC1.png)
 
+Contract [Solidity](../bca-token-solidity/contracts/BCA_ERC20_nf.sol) code
 
 ### public methods
 The ERC20 contract allows the following methods:
@@ -24,17 +24,10 @@ These methods can only be called from the _serviceAccount_
 ### supply methods
 
 - mint
-> only allowed from the _minter_
+> only allowed from the _minter_ account
 
 - burn
-> only allowed from the _burner_
+> only allowed from the _burner_ account
 
 > will burn tokens in the _serviceAccount_
-
-
-### transfer method
-
-This method only allows to transfer tokens from a user's account to the _serviceAccount_
-
-Users cannot transfer tokens to their addresses.
 

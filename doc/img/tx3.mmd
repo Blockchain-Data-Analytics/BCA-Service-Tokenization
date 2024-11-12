@@ -1,16 +1,29 @@
 graph TD 
 
-    style tx3 fill:#626
-    style Client0 fill:#444
-    style Client1 fill:#444
+    style tx3 fill:#844
+    style µpay fill:#626
+    style User0 fill:#444
+    style User1 fill:#444
+    style User2 fill:#444
     style Service0 fill:#559
     style Service1 fill:#559
+    style Service2 fill:#559
+    style Service3 fill:#559
 
-    subgraph off-chain
-    %% tx3 - services debit the client account for usage
+    subgraph service smart contract
+    %% µpay - services debit the user account for usage
+    µpay("micro-payment")
+    User0(User: BCA1 4.8) -.->|dt = -0.1| µpay
+    Service0(Provider: BCA1 0) -.->|dt = +0.1| µpay
+    µpay -.-> User1(User: BCA1 4.7)
+    µpay -.-> Service1(Provider: BCA1 0.1)
+    end
+
+    subgraph withdrawal
     tx3("tx3")
-    Client0(Client: Geez 5) -.-> tx3
-    Service0(Service) -.->|debit .1| tx3
-    tx3 -.-> Client1(Client: Geez 4.9)
-    tx3 -.-> Service1(Service: Geez 0.1)
+    User1(User: BCA1 4.7) -.-> tx3
+    Service1(Provider: BCA1 0.1) -.-> tx3
+    tx3 -.-> User2(User: BCA1 4.7)
+    tx3 -.-> Service2(Provider: BCA1 0)
+    tx3 -.->|withdrawal| Service3(Provider': BCA1 0.1)
     end
