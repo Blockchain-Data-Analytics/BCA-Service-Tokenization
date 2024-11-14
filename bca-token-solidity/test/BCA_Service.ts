@@ -22,7 +22,7 @@ import {
         const daily_price = 1n;  // 1 token per 24h
         const day_price = (daily_price * BigInt(10n**precision));
         assert(day_price > 0n, "tick price must be > 0: " + (day_price.toString()));
-        console.log(`tick price: ${day_price}`)
+        // console.log(`tick price: ${day_price}`)
         const serviceContract = await Contract.deploy(provider, tokenContract.getAddress(), day_price);
 
         // minting some tokens to the users
@@ -118,6 +118,7 @@ import {
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
       await expect(service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.be.revertedWithCustomError(service.serviceContract, 'InsufficientAmount')
     });
+
     it("The user deposits to the contract and thus starts the service", async function () {
         const { token, service } = await loadFixture(deployContract);
   
@@ -205,7 +206,7 @@ import {
         // check the user's balance: should be ~ 0.5; will pay a tick until next tx
         const ubal = await service.serviceContract.connect(service.user1).balanceUser() - (await service.serviceContract.dayPrice() / 24n / 3600n);
         const rem = await service.serviceContract.deposit()
-        console.log(`user's balance: ${ubal}  deposit: ${rem}  24h price: ${await service.serviceContract.dayPrice()}`)
+        // console.log(`user's balance: ${ubal}  deposit: ${rem}  24h price: ${await service.serviceContract.dayPrice()}`)
 
         // the user withdraws from the contract which stops the service
         expect(await service.serviceContract.connect(service.user1).withdrawUser(ubal)).to.emit(service.serviceContract, "ServiceStopped").withArgs('ticks');
