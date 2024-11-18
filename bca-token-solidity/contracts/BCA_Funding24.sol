@@ -2,15 +2,20 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./Iface_Funding24.sol";
+import "./Iface_ServiceInstance.sol";
 
-contract BCAServiceFunding24 is Ownable {
+contract BCAServiceFunding24 is Iface_Funding24, Ownable {
+    using SafeERC20 for IERC20;
+
     address public immutable targetContract;
     uint256 public immutable dailyAmount;
-    uint256 public lastDepositTime;
     IERC20 public immutable token;
+    uint256 public lastDepositTime;
 
-    event DepositMade(uint256 amount, uint256 timestamp);
+    event DepositMade(address targetContract, uint256 amount, uint256 timestamp);
 
     constructor(
         address _initialOwner,
@@ -25,11 +30,12 @@ contract BCAServiceFunding24 is Ownable {
         targetContract = _targetContract;
         token = IERC20(_token);
         dailyAmount = _dailyAmount;
+        lastDepositTime = 0;
     }
 
     function deposit() external {
         require(
-            block.timestamp >= lastDepositTime + 24 hours,
+            lastDepositTime == 0 || block.timestamp >= lastDepositTime + 24 hours,
             "24 hours have not passed since last deposit"
         );
         
@@ -43,26 +49,25 @@ contract BCAServiceFunding24 is Ownable {
             "Insufficient allowance from owner"
         );
 
-        // Transfer tokens from owner to this contract
-        token.transferFrom(owner(), address(this), dailyAmount);
+        // // Transfer tokens from owner to this contract
+        token.safeTransferFrom(owner(), address(this), dailyAmount);
 
-        // Set allowance for the target contract
+        // // Set allowance for the target contract
         token.approve(targetContract, dailyAmount);
         
-        // Call deposit function on target contract
-        (bool success, ) = targetContract.call(
-            abi.encodeWithSignature("makeDeposit(uint256)", dailyAmount)
-        );
-        require(success, "Deposit failed");
-
-        lastDepositTime = block.timestamp;
-        
-        emit DepositMade(dailyAmount, block.timestamp);
+        try Iface_ServiceInstance(targetContract).makeDeposit(dailyAmount) {
+            lastDepositTime = block.timestamp;
+            emit DepositMade(targetContract, dailyAmount, block.timestamp);
+        } catch Error(string memory reason) {
+            revert(reason);
+        } catch (bytes memory) {
+            revert("failed to make deposit");
+        }
     }
 
     // Function to check if deposit is currently possible
     function canDeposit() external view returns (bool) {
-        return block.timestamp >= lastDepositTime + 24 hours &&
+        return (lastDepositTime == 0 || block.timestamp >= lastDepositTime + 24 hours) &&
                token.balanceOf(owner()) >= dailyAmount &&
                token.allowance(owner(), address(this)) >= dailyAmount;
     }

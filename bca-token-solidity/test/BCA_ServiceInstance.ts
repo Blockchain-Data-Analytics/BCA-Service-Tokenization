@@ -18,12 +18,12 @@ import {
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Contract = await hre.ethers.getContractFactory("BCAServiceContract");
+        const Contract = await hre.ethers.getContractFactory("BCAServiceInstance");
         const daily_price = 1n;  // 1 token per 24h
         const day_price = (daily_price * BigInt(10n**precision));
         assert(day_price > 0n, "tick price must be > 0: " + (day_price.toString()));
         // console.log(`tick price: ${day_price}`)
-        const serviceContract = await Contract.deploy(provider, tokenContract.getAddress(), day_price);
+        const serviceContract = await Contract.deploy(provider, tokenContract.getAddress(), user1, day_price);
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
@@ -107,18 +107,6 @@ import {
   });
 
   describe("Deposit from user", function () {
-    it("The first deposit starts the service, and must be sufficient", async function () {
-      const { token, service } = await loadFixture(deployContract);
-
-      let deposit = 1n * token.one_token / 10n;
-
-      expect(await service.serviceContract.startTime()).to.eq(0, "good! not yet started");
-
-      // approve deposit amounts to be spent by the service contract
-      await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      await expect(service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.be.revertedWithCustomError(service.serviceContract, 'InsufficientAmount')
-    });
-
     it("The user deposits to the contract and thus starts the service", async function () {
         const { token, service } = await loadFixture(deployContract);
   
@@ -136,12 +124,6 @@ import {
         // advance time and create a new block
         const block2 = BigInt(await time.increase(30));
 
-        // service contract is subscribed by user1; cannot be subscribed by another user
-        await expect(service.serviceContract.connect(service.user2).makeDeposit(token.one_token * 1n)).to.be.revertedWithCustomError(service.serviceContract, 'AlreadySubscribed()');
-
-        // advance time and create a new block
-        const block3 = BigInt(await time.increase(30));
-
         // increase the deposit - also increase the allowance
         deposit = token.one_token * 3n;
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -157,7 +139,7 @@ import {
         expect(await service.serviceContract.userAddress()).to.equal(service.user1.address);
 
         // check the deposit
-        expect(await service.serviceContract.deposit()).to.equal(5n * token.one_token - (2n * token.one_token / 10n));
+        expect(await service.serviceContract.deposit()).to.equal(5n * token.one_token);
 
         // check the user's balance, and the provider's
         expect(await service.serviceContract.connect(service.user1).balanceUser()).to.lessThan(5n * token.one_token);
@@ -170,7 +152,7 @@ import {
     it("The user deposits to the contract and thus starts the service, then stops the service", async function () {
         const { token, service } = await loadFixture(deployContract);
   
-        let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+        let deposit = token.one_token * 1n;  // this is sufficient for one day
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -194,7 +176,7 @@ import {
     it("The user deposits to the contract and thus starts the service, then withdraws which stops the service", async function () {
         const { token, service } = await loadFixture(deployContract);
   
-        let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+        let deposit = token.one_token * 1n;  // this is sufficient for one day
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -228,7 +210,7 @@ import {
     it("The user stops a service, then sends deposits to the service which must fail", async function () {
         const { token, service } = await loadFixture(deployContract);
   
-        let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+        let deposit = token.one_token * 1n;  // this is sufficient for one day
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -264,7 +246,7 @@ import {
     it("The user deposits to the contract and thus starts the service. The provider withdraws some amount.", async function () {
         const { token, service } = await loadFixture(deployContract);
   
-        let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+        let deposit = token.one_token * 1n;  // this is sufficient for one day
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -301,7 +283,7 @@ import {
     it("The user cannot withdraw the provider's balance.", async function () {
       const { token, service } = await loadFixture(deployContract);
 
-      let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+      let deposit = token.one_token * 1n;  // this is sufficient for one day
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -317,7 +299,7 @@ import {
     it("The provider cannot withdraw the user's balance.", async function () {
       const { token, service } = await loadFixture(deployContract);
 
-      let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+      let deposit = token.one_token * 1n;  // this is sufficient for one day
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -333,7 +315,7 @@ import {
     it("The user cannot withdraw more than the balance.", async function () {
       const { token, service } = await loadFixture(deployContract);
 
-      let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+      let deposit = token.one_token * 1n;  // this is sufficient for one day
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
@@ -349,7 +331,7 @@ import {
     it("The provider cannot withdraw more than the balance.", async function () {
       const { token, service } = await loadFixture(deployContract);
 
-      let deposit = token.one_token * 1n + await service.serviceContract.setupFee();  // this is sufficient for one day
+      let deposit = token.one_token * 1n;  // this is sufficient for one day
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);

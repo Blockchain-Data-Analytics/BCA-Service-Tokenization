@@ -12,16 +12,16 @@ import {
     // and reset Hardhat Network to that snapshot in every test.
     async function deployContract() {
         // Contracts are deployed using the first signer/account by default
-        const [owner, minter, burner, provider, user1, user2] = await hre.ethers.getSigners();
+        const [owner, minter, burner, provider, user1, user2, cron] = await hre.ethers.getSigners();
 
         const Token = await hre.ethers.getContractFactory("BCAServiceToken");
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Contract1 = await hre.ethers.getContractFactory("BCAServiceContract");
+        const Contract1 = await hre.ethers.getContractFactory("BCAServiceInstance");
         const daily_price = 1n;  // 1 token per 24h
         const day_price = (daily_price * BigInt(10n**precision));
-        const serviceContract = await Contract1.deploy(provider, tokenContract.getAddress(), day_price);
+        const serviceContract = await Contract1.deploy(provider, tokenContract.getAddress(), user1, day_price);
 
         const Contract2 = await hre.ethers.getContractFactory("BCAServiceFunding24");
         const daily_funds = 101n;  // 1.01 token per 24h
@@ -37,7 +37,7 @@ import {
         const startblocktime: bigint = BigInt(await time.increase(30));
 
         return { token: { tokenContract, one_token, owner, minter, burner, provider, user1, user2 },
-                 funding: { fundingContract, day_funds },
+                 funding: { fundingContract, day_funds, cron },
                  service: { serviceContract, provider, user1, user2 } };
     }
 
@@ -66,37 +66,38 @@ import {
 
     describe("Deposit functionality", function () {
         it("Should allow deposit when properly funded and approved", async function () {
-            const { token, funding } = await loadFixture(deployContract);
+            const { token, funding, service } = await loadFixture(deployContract);
 
             // Approve funding contract to spend user1's tokens
             await token.tokenContract.connect(token.user1).approve(
                 funding.fundingContract.getAddress(),
-                funding.day_funds
+                // service.serviceContract.getAddress(),
+                funding.day_funds * 10n
             );
 
             // Initial deposit should succeed
-            await expect(funding.fundingContract.connect(token.user1).deposit())
+            await expect(funding.fundingContract.connect(funding.cron).deposit())
                 .to.emit(funding.fundingContract, "DepositMade")
-                .withArgs(funding.day_funds, anyValue);
+                .withArgs(service.serviceContract.getAddress(), funding.day_funds, anyValue);
         });
 
         it("Should revert if user has insufficient balance for allowance", async function () {
             const { token, funding } = await loadFixture(deployContract);
 
-            // Transfer all tokens from user2 to user1
-            await token.tokenContract.connect(token.user2).transfer(
-                token.user1.address,
-                await token.tokenContract.balanceOf(token.user2.address)
+            // Transfer all tokens from user1 to user2
+            await token.tokenContract.connect(token.user1).transfer(
+                token.user2.address,
+                await token.tokenContract.balanceOf(token.user1.address)
             );
 
-            await token.tokenContract.connect(token.user2).approve(
+            await token.tokenContract.connect(token.user1).approve(
                 funding.fundingContract.getAddress(),
                 funding.day_funds
             );
 
             await expect(
-                funding.fundingContract.connect(token.user2).deposit()
-            ).to.be.revertedWith("Insufficient allowance from owner");
+                funding.fundingContract.connect(funding.cron).deposit()
+            ).to.be.revertedWith("Insufficient balance in owner's wallet");
         });
 
         it("Should revert if allowance is insufficient", async function () {
@@ -109,7 +110,7 @@ import {
             );
 
             await expect(
-                funding.fundingContract.connect(token.user1).deposit()
+                funding.fundingContract.connect(funding.cron).deposit()
             ).to.be.revertedWith("Insufficient allowance from owner");
         });
 
@@ -122,7 +123,7 @@ import {
             );
 
             // First deposit
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
 
             // Second deposit should fail
             await expect(
@@ -139,14 +140,14 @@ import {
             );
 
             // First deposit
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
 
             // Increase time by 24 hours
             await time.increase(24 * 60 * 60);
 
             // Second deposit should succeed
             await expect(
-                funding.fundingContract.connect(token.user1).deposit()
+                funding.fundingContract.connect(funding.cron).deposit()
             ).to.not.be.reverted;
         });
     });
@@ -160,7 +161,7 @@ import {
                 funding.day_funds
             );
 
-            expect(await funding.fundingContract.connect(token.user1).canDeposit())
+            expect(await funding.fundingContract.connect(funding.cron).canDeposit())
                 .to.be.true;
         });
 
@@ -172,9 +173,9 @@ import {
                 funding.day_funds * 2n
             );
 
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
 
-            expect(await funding.fundingContract.connect(token.user1).canDeposit())
+            expect(await funding.fundingContract.connect(funding.cron).canDeposit())
                 .to.be.false;
         });
 
@@ -186,10 +187,10 @@ import {
                 funding.day_funds * 2n
             );
 
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
             await time.increase(24 * 60 * 60);
 
-            expect(await funding.fundingContract.connect(token.user1).canDeposit())
+            expect(await funding.fundingContract.connect(funding.cron).canDeposit())
                 .to.be.true;
         });
     });
@@ -207,7 +208,7 @@ import {
                 service.serviceContract.getAddress()
             );
 
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
 
             // advance time and create a new block
             const block1 = BigInt(await time.increase(30));
@@ -231,14 +232,14 @@ import {
             );
 
             // First deposit
-            await funding.fundingContract.connect(token.user1).deposit();
+            await funding.fundingContract.connect(funding.cron).deposit();
 
             // advance time and create a new block
             const block1 = BigInt(await time.increase(30));
 
             // Try immediate deposit (should fail)
             await expect(
-                funding.fundingContract.connect(token.user1).deposit()
+                funding.fundingContract.connect(funding.cron).deposit()
             ).to.be.revertedWith("24 hours have not passed since last deposit");
 
             // Wait 24 hours
@@ -246,7 +247,7 @@ import {
 
             // Second deposit should succeed
             await expect(
-                funding.fundingContract.connect(token.user1).deposit()
+                funding.fundingContract.connect(funding.cron).deposit()
             ).to.not.be.reverted;
 
             // the start time must be registered on the first succesfull call to "deposit"
