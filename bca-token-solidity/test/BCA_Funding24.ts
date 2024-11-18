@@ -31,7 +31,7 @@ import {
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
-        expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user1, 100n*one_token);
+        expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user1, 10n*one_token);
         expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user2, 10n*one_token);
 
         const startblocktime: bigint = BigInt(await time.increase(30));
