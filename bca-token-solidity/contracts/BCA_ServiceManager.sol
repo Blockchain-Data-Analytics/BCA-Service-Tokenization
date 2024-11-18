@@ -19,6 +19,9 @@ contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     event ServiceDeployed(address contractAddress);
 
     constructor(address setProviderAddress, address tokAddress) {
+        require(setProviderAddress != address(0), "Invalid provider address");
+        require(tokAddress != address(0), "Invalid token address");
+
         tokToken = IERC20(tokAddress);
         providerAddress = setProviderAddress;
     }

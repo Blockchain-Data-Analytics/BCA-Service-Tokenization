@@ -21,6 +21,9 @@ contract BCAServiceToken is ERC20, AccessControl {
     constructor(string memory setName, string memory setSymbol, address setMinter, address setBurner)
         ERC20(setName, setSymbol)
     {
+        require(setMinter != address(0), "Invalid minter address");
+        require(setBurner != address(0), "Invalid burner address");
+
         serviceAddress = msg.sender;
         minterAddress = setMinter;
         burnerAddress = setBurner;

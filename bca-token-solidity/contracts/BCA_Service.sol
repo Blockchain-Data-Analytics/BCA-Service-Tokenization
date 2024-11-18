@@ -25,6 +25,9 @@ contract BCAService is IService, ReentrancyGuard {
 
     constructor(address setProviderAddress, address tokAddress, 
                 uint16 setMaxInstances, uint256 setDayPrice) {
+        require(setProviderAddress != address(0), "Invalid provider address");
+        require(tokAddress != address(0), "Invalid token address");
+
         tokToken = IERC20(tokAddress);
         dayPrice = setDayPrice;
         providerAddress = setProviderAddress;
