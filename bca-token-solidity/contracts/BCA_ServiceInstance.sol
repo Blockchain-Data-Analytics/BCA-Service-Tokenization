@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Iface_ServiceInstance.sol";
 
-contract BCAServiceInstance is Iface_ServiceInstance, ReentrancyGuard {
+contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // will be set in the constructor
@@ -32,13 +32,13 @@ contract BCAServiceInstance is Iface_ServiceInstance, ReentrancyGuard {
     error NotStarted();
     error UnAuthorized();
 
-    constructor(address _providerAddress, address _tokAddress,
-                address _userAddress,
-                uint256 _dayPrice) {
-        tokToken = IERC20(_tokAddress);
-        dayPrice = _dayPrice;
-        providerAddress = _providerAddress;
-        userAddress = _userAddress;
+    constructor(address setProviderAddress, address tokAddress,
+                address setUserAddress,
+                uint256 setDayPrice) {
+        tokToken = IERC20(tokAddress);
+        dayPrice = setDayPrice;
+        providerAddress = setProviderAddress;
+        userAddress = setUserAddress;
     }
 
     function makeDeposit(uint256 amount) external nonReentrant {

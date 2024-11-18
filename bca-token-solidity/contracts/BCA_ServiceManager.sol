@@ -8,7 +8,7 @@ import "./Iface_ServiceManager.sol";
 import "./BCA_Service.sol";
 
 // Factory contract that deploys service contracts
-contract BCAServiceManager is Iface_ServiceManager, ReentrancyGuard {
+contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable tokToken;
@@ -18,14 +18,14 @@ contract BCAServiceManager is Iface_ServiceManager, ReentrancyGuard {
     // Event to notify when a new service is deployed
     event ServiceDeployed(address contractAddress);
 
-    constructor(address _providerAddress, address _tokAddress) {
-        tokToken = IERC20(_tokAddress);
-        providerAddress = _providerAddress;
+    constructor(address setProviderAddress, address tokAddress) {
+        tokToken = IERC20(tokAddress);
+        providerAddress = setProviderAddress;
     }
 
-    function newService(uint16 _maxInstances, uint256 _dayPrice) external nonReentrant returns (address) {
+    function newService(uint16 maxInstances, uint256 dayPrice) external nonReentrant returns (address) {
         // Create a new SimpleContract
-        BCAService serviceContract = new BCAService(providerAddress, address(tokToken), _maxInstances, _dayPrice);
+        BCAService serviceContract = new BCAService(providerAddress, address(tokToken), maxInstances, dayPrice);
         
         // Store the address
         deployedServices.push(address(serviceContract));

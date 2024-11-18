@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Iface_Service.sol";
 import "./BCA_ServiceInstance.sol";
 
-contract BCAService is Iface_Service, ReentrancyGuard {
+contract BCAService is IService, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // will be set in the constructor
@@ -23,20 +23,20 @@ contract BCAService is Iface_Service, ReentrancyGuard {
 
     error Exhausted();
 
-    constructor(address _providerAddress, address _tokAddress, 
-                uint16 _maxInstances, uint256 _dayPrice) {
-        tokToken = IERC20(_tokAddress);
-        dayPrice = _dayPrice;
-        providerAddress = _providerAddress;
-        maxInstances = _maxInstances;
+    constructor(address setProviderAddress, address tokAddress, 
+                uint16 setMaxInstances, uint256 setDayPrice) {
+        tokToken = IERC20(tokAddress);
+        dayPrice = setDayPrice;
+        providerAddress = setProviderAddress;
+        maxInstances = setMaxInstances;
     }
 
-    function newInstance(address _userAddress) external nonReentrant returns (address) {
+    function newInstance(address userAddress) external nonReentrant returns (address) {
         if (deployedInstances.length >= maxInstances) {
             revert Exhausted();
         }
         // Create a new SimpleContract
-        BCAServiceInstance instanceContract = new BCAServiceInstance(providerAddress, address(tokToken), _userAddress, dayPrice);
+        BCAServiceInstance instanceContract = new BCAServiceInstance(providerAddress, address(tokToken), userAddress, dayPrice);
         
         // Store the address
         deployedInstances.push(address(instanceContract));

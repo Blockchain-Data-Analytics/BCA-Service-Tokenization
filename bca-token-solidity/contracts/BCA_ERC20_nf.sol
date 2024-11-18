@@ -31,32 +31,32 @@ contract BCAServiceToken is ERC20, AccessControl {
 
     /**
      * @dev Allows the admin to set the service address.
-     * @param new_serviceAddress The address to set as the service address.
+     * @param newServiceAddress The address to set as the service address.
      */
-    function setServiceAddress(address new_serviceAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setServiceAddress(address newServiceAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(DEFAULT_ADMIN_ROLE, serviceAddress);
-        serviceAddress = new_serviceAddress;
-        _grantRole(DEFAULT_ADMIN_ROLE, new_serviceAddress);
+        serviceAddress = newServiceAddress;
+        _grantRole(DEFAULT_ADMIN_ROLE, newServiceAddress);
     }
 
     /**
      * @dev Allows the admin to set the minter address.
-     * @param new_minterAddress The address to set as the minter address.
+     * @param newMinterAddress The address to set as the minter address.
      */
-    function setMinterAddress(address new_minterAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMinterAddress(address newMinterAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(MINTER_ROLE, minterAddress);
-        minterAddress = new_minterAddress;
-        _grantRole(MINTER_ROLE, new_minterAddress);
+        minterAddress = newMinterAddress;
+        _grantRole(MINTER_ROLE, newMinterAddress);
     }
 
     /**
      * @dev Allows the admin to set the burner address.
-     * @param new_burnerAddress The address to set as the burner address.
+     * @param newBurnerAddress The address to set as the burner address.
      */
-    function setBurnerAddress(address new_burnerAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBurnerAddress(address newBurnerAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(BURNER_ROLE, burnerAddress);
-        burnerAddress = new_burnerAddress;
-        _grantRole(BURNER_ROLE, new_burnerAddress);
+        burnerAddress = newBurnerAddress;
+        _grantRole(BURNER_ROLE, newBurnerAddress);
     }
 
     /**

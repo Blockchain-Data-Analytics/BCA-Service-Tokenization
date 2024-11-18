@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Iface_Funding24.sol";
 import "./Iface_ServiceInstance.sol";
 
-contract BCAServiceFunding24 is Iface_Funding24, Ownable {
+contract BCAServiceFunding24 is IFunding24, Ownable {
     using SafeERC20 for IERC20;
 
     address public immutable targetContract;
@@ -18,18 +18,18 @@ contract BCAServiceFunding24 is Iface_Funding24, Ownable {
     event DepositMade(address targetContract, uint256 amount, uint256 timestamp);
 
     constructor(
-        address _initialOwner,
-        address _targetContract,
-        address _token,
-        uint256 _dailyAmount
-    ) Ownable(_initialOwner) {
-        require(_targetContract != address(0), "Invalid target contract address");
-        require(_token != address(0), "Invalid token address");
-        require(_dailyAmount > 0, "Invalid daily amount");
+        address initialOwner,
+        address setTargetContract,
+        address setToken,
+        uint256 setDailyAmount
+    ) Ownable(initialOwner) {
+        require(setTargetContract != address(0), "Invalid target contract address");
+        require(setToken != address(0), "Invalid token address");
+        require(setDailyAmount > 0, "Invalid daily amount");
         
-        targetContract = _targetContract;
-        token = IERC20(_token);
-        dailyAmount = _dailyAmount;
+        targetContract = setTargetContract;
+        token = IERC20(setToken);
+        dailyAmount = setDailyAmount;
         lastDepositTime = 0;
     }
 
@@ -55,7 +55,7 @@ contract BCAServiceFunding24 is Iface_Funding24, Ownable {
         // Set allowance for the target contract
         token.approve(targetContract, dailyAmount);
         
-        try Iface_ServiceInstance(targetContract).makeDeposit(dailyAmount) {
+        try IServiceInstance(targetContract).makeDeposit(dailyAmount) {
             lastDepositTime = block.timestamp;
             emit DepositMade(targetContract, dailyAmount, block.timestamp);
         } catch Error(string memory reason) {
