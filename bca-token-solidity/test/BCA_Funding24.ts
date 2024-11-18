@@ -71,7 +71,6 @@ import {
             // Approve funding contract to spend user1's tokens
             await token.tokenContract.connect(token.user1).approve(
                 funding.fundingContract.getAddress(),
-                // service.serviceContract.getAddress(),
                 funding.day_funds * 10n
             );
 

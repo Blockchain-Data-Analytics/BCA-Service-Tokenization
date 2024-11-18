@@ -49,10 +49,10 @@ contract BCAServiceFunding24 is Iface_Funding24, Ownable {
             "Insufficient allowance from owner"
         );
 
-        // // Transfer tokens from owner to this contract
+        // Transfer tokens from owner to this contract
         token.safeTransferFrom(owner(), address(this), dailyAmount);
 
-        // // Set allowance for the target contract
+        // Set allowance for the target contract
         token.approve(targetContract, dailyAmount);
         
         try Iface_ServiceInstance(targetContract).makeDeposit(dailyAmount) {
