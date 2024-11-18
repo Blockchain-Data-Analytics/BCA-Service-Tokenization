@@ -13,20 +13,20 @@ contract BCAServiceToken is ERC20, AccessControl {
 
     /**
      * @dev Constructor that sets up roles and gives the deployer the default admin role.
-     * @param name The name of the token.
-     * @param symbol The symbol of the token.
-     * @param minter The address that will be granted the minter role.
-     * @param burner The address that will be granted the burner role.
+     * @param setName The name of the token.
+     * @param setSymbol The symbol of the token.
+     * @param setMinter The address that will be granted the minter role.
+     * @param setBurner The address that will be granted the burner role.
      */
-    constructor(string memory name, string memory symbol, address minter, address burner)
-        ERC20(name, symbol)
+    constructor(string memory setName, string memory setSymbol, address setMinter, address setBurner)
+        ERC20(setName, setSymbol)
     {
         serviceAddress = msg.sender;
-        minterAddress = minter;
-        burnerAddress = burner;
+        minterAddress = setMinter;
+        burnerAddress = setBurner;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, minter);
-        _grantRole(BURNER_ROLE, burner);
+        _grantRole(MINTER_ROLE, setMinter);
+        _grantRole(BURNER_ROLE, setBurner);
     }
 
     /**

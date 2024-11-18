@@ -49,6 +49,9 @@ contract BCAServiceFunding24 is IFunding24, Ownable {
             "Insufficient allowance from owner"
         );
 
+        // set new state
+        lastDepositTime = block.timestamp;
+
         // Transfer tokens from owner to this contract
         token.safeTransferFrom(owner(), address(this), dailyAmount);
 
@@ -56,7 +59,6 @@ contract BCAServiceFunding24 is IFunding24, Ownable {
         token.approve(targetContract, dailyAmount);
         
         try IServiceInstance(targetContract).makeDeposit(dailyAmount) {
-            lastDepositTime = block.timestamp;
             emit DepositMade(targetContract, dailyAmount, block.timestamp);
         } catch Error(string memory reason) {
             revert(reason);

@@ -128,9 +128,14 @@ contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
             revert InsufficientBalance(balance);
         }
 
-        tokToken.transfer(msg.sender, amount);
+        // set new state
         deposit -= amount;
-        emit Withdrawn(msg.sender, amount);
+
+        if (tokToken.transfer(msg.sender, amount)) {
+            emit Withdrawn(msg.sender, amount);
+        } else {
+            revert("transfer failed");
+        }
 
         // stop service?
         if (balance - amount <= dayPrice / 24 / 3600) {
@@ -153,8 +158,13 @@ contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
            _stop(msg.sender);
         }
 
-        tokToken.transfer(msg.sender, amount);
+        // set new state
         retracted += amount;
-        emit Retracted(msg.sender, amount);
+
+        if (tokToken.transfer(msg.sender, amount)) {
+            emit Retracted(msg.sender, amount);
+        } else {
+            revert("transfer failed");
+        }
     }
 }
