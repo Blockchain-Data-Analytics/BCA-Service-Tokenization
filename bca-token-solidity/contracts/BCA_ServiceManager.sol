@@ -5,41 +5,56 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Iface_ServiceManager.sol";
-import "./BCA_Service.sol";
+import "./BCA_ServiceController.sol";
 
 // Factory contract that deploys service contracts
 contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public immutable tokToken;
-    address public immutable providerAddress;
-    address[] public deployedServices;
+
+    struct ControllerStruct {
+        address addrContract;
+        bool isDeployed;
+    }
+    mapping (address => ControllerStruct) public deployedControllers;
+    address[] public addressControllers;
     
     // Event to notify when a new service is deployed
-    event ServiceDeployed(address contractAddress);
+    event ControllerDeployed(address contractAddress);
 
-    constructor(address setProviderAddress, address tokAddress) {
-        require(setProviderAddress != address(0), "Invalid provider address");
+    constructor(address tokAddress) {
         require(tokAddress != address(0), "Invalid token address");
 
         tokToken = IERC20(tokAddress);
-        providerAddress = setProviderAddress;
     }
 
-    function newService(uint16 maxInstances, uint256 dayPrice) external nonReentrant returns (address) {
+    function getControllerAddress(address providerAddress) public view returns(address addrController) {
+        require (deployedControllers[providerAddress].isDeployed == true, "no controller for this provider");
+        return deployedControllers[providerAddress].addrContract;
+    }
+
+    function isDeployed(address providerAddress) public view returns(bool isdeployed) {
+        if (addressControllers.length == 0) return false;
+        return (deployedControllers[providerAddress].isDeployed);
+    }
+
+    function newController(address providerAddress) external nonReentrant {
+        require(! isDeployed(providerAddress), "already deployed controller for this provider");
+
         // Create a new SimpleContract
-        BCAService serviceContract = new BCAService(providerAddress, address(tokToken), maxInstances, dayPrice);
+        BCAServiceController controllerContract = new BCAServiceController(providerAddress, address(tokToken));
         
         // Store the address
-        deployedServices.push(address(serviceContract));
+        addressControllers.push(address(controllerContract));
+        deployedControllers[providerAddress].addrContract = address(controllerContract);
+        deployedControllers[providerAddress].isDeployed = true;
         
         // Emit event
-        emit ServiceDeployed(address(serviceContract));
-        
-        return address(serviceContract);
+        emit ControllerDeployed(address(controllerContract));
     }
-    
-    function countServiceContracts() public view returns (uint) {
-        return deployedServices.length;
+
+    function countServiceControllers() public view returns (uint) {
+        return addressControllers.length;
     }
 }

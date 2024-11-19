@@ -12,7 +12,7 @@ let provider = "0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199"
 
 const BCAServiceManagerModule = buildModule("BCA_ServiceManager", (m) => {
 
-    const bcasrvmgr = m.contract("BCAServiceManager", [provider, deployed_address["BCA_Token#BCAServiceToken"]]);
+    const bcasrvmgr = m.contract("BCAServiceManager", [deployed_address["BCA_Token#BCAServiceToken"]]);
   
     return { bcasrvmgr };
   });

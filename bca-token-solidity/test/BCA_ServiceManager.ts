@@ -18,11 +18,13 @@ import {
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Contract1 = await hre.ethers.getContractFactory("BCAServiceManager");
-        const serviceManager1 = await Contract1.deploy(provider1, tokenContract.getAddress());
+        const Manager = await hre.ethers.getContractFactory("BCAServiceManager");
+        const serviceManager = await Manager.deploy(tokenContract.getAddress());
 
-        const Contract2 = await hre.ethers.getContractFactory("BCAServiceManager");
-        const serviceManager2 = await Contract1.deploy(provider2, tokenContract.getAddress());
+        const addrController1 = await (await serviceManager.connect(owner).newController(provider1)).wait().then(_ => serviceManager.connect(owner).getControllerAddress(provider1));
+        const serviceController1 = await hre.ethers.getContractAt("BCAServiceController", addrController1)
+        const addrController2 = await (await serviceManager.connect(owner).newController(provider2)).wait().then(_ => serviceManager.connect(owner).getControllerAddress(provider2));
+        const serviceController2 = await hre.ethers.getContractAt("BCAServiceController", addrController2)
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
@@ -34,35 +36,43 @@ import {
         const startblocktime: bigint = BigInt(await time.increase(30));
 
         return { token: { tokenContract, one_token, owner, minter, burner, user1, user2 },
-                 sm1: { serviceManager1, provider1 },
-                 sm2: { serviceManager2, provider2 } };
+                 sm: { serviceManager, provider1, provider2 },
+                 sc1: { serviceController1, provider1 },
+                 sc2: { serviceController2, provider2 } };
     }
 
     describe("Deployment", function () {
-        it("Funding contract: should set the right provider", async function () {
-            const { sm1 } = await loadFixture(deployContract);
-            expect(await sm1.serviceManager1.providerAddress()).to.equal(
-                sm1.provider1.address
+        it("Should have already deployed controllers", async function () {
+            const { sm } = await loadFixture(deployContract);
+            expect(await sm.serviceManager.countServiceControllers()).to.equal(
+                2
             );
         });
 
-        it("Funding contract: should set the right provider", async function () {
-            const { sm2 } = await loadFixture(deployContract);
-            expect(await sm2.serviceManager2.providerAddress()).to.equal(
-                sm2.provider2.address
+        it("Should set the right provider", async function () {
+            const { sc1 } = await loadFixture(deployContract);
+            expect(await sc1.serviceController1.providerAddress()).to.equal(
+                sc1.provider1.address
+            );
+        });
+
+        it("Should set the right provider", async function () {
+            const { sc2 } = await loadFixture(deployContract);
+            expect(await sc2.serviceController2.providerAddress()).to.equal(
+                sc2.provider2.address
             );
         });
     });
 
     describe("Create new services", function () {
         it("Should emit ServiceDeployed on new service creation", async function () {
-            const { sm1, sm2 } = await loadFixture(deployContract);
+            const { sc1, sc2 } = await loadFixture(deployContract);
 
-            await expect(sm1.serviceManager1.connect(sm1.provider1).newService(3, 1n * 10n**18n))
-                .to.emit(sm1.serviceManager1, "ServiceDeployed")
+            await expect(sc1.serviceController1.connect(sc1.provider1).newService(3, 1n * 10n**18n))
+                .to.emit(sc1.serviceController1, "ServiceDeployed")
                 .withArgs(anyValue);
-            await expect(sm2.serviceManager2.connect(sm2.provider2).newService(99, 1n * 10n**18n / 10n))
-                .to.emit(sm2.serviceManager2, "ServiceDeployed")
+            await expect(sc2.serviceController2.connect(sc2.provider2).newService(99, 1n * 10n**18n / 10n))
+                .to.emit(sc2.serviceController2, "ServiceDeployed")
                 .withArgs(anyValue);
         });
 

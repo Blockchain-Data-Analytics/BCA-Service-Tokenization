@@ -2,5 +2,5 @@
 pragma solidity ^0.8.24;
 
 interface IServiceManager {
-        function newService(uint16 _maxInstances, uint256 _dayPrice) external returns (address);
+        function newController(address providerAddress) external;
 }
