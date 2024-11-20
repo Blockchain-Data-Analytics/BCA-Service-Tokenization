@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./Iface_ServiceManager.sol";
 import "./BCA_ServiceController.sol";
 
-// Factory contract that deploys service contracts
+// Factory contract that deploys controller contracts
 contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -18,7 +18,7 @@ contract BCAServiceManager is IServiceManager, ReentrancyGuard {
         bool isDeployed;
     }
     mapping (address => ControllerStruct) public deployedControllers;
-    address[] public addressControllers;
+    address[] public providerControllers;
     
     // Event to notify when a new service is deployed
     event ControllerDeployed(address contractAddress);
@@ -35,7 +35,7 @@ contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     }
 
     function isDeployed(address providerAddress) public view returns(bool isdeployed) {
-        if (addressControllers.length == 0) return false;
+        if (providerControllers.length == 0) return false;
         return (deployedControllers[providerAddress].isDeployed);
     }
 
@@ -46,7 +46,7 @@ contract BCAServiceManager is IServiceManager, ReentrancyGuard {
         BCAServiceController controllerContract = new BCAServiceController(providerAddress, address(tokToken));
         
         // Store the address
-        addressControllers.push(address(controllerContract));
+        providerControllers.push(providerAddress);
         deployedControllers[providerAddress].addrContract = address(controllerContract);
         deployedControllers[providerAddress].isDeployed = true;
         
@@ -55,6 +55,6 @@ contract BCAServiceManager is IServiceManager, ReentrancyGuard {
     }
 
     function countServiceControllers() public view returns (uint) {
-        return addressControllers.length;
+        return providerControllers.length;
     }
 }
