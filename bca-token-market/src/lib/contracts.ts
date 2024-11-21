@@ -21,3 +21,21 @@ import abi_service_json from "$lib/bca_service-abi.json"
 export const serviceABI = abi_service_json["abi"];
 import abi_serviceinstance_json from "$lib/bca_serviceinstance-abi.json"
 export const serviceInstanceABI = abi_serviceinstance_json["abi"];
+
+// token constants
+export const token_symbol: string = 'BCA1'
+export const token_decimals: number = 18
+
+// calculations
+export function calculate_user_balance(deposit: number, startTime: number, dayPrice: number) {
+    if (startTime <= 0) { return deposit }
+    const now = new Date().getTime()
+    const deltaMilsecs = now - startTime * 1000
+    return Math.max(0, deposit - (dayPrice * deltaMilsecs / 24 / 3600 / 1000))
+}
+export function calculate_provider_balance(deposit: number, retracted: number, startTime: number, dayPrice: number) {
+    if (startTime <= 0) { return deposit }
+    const now = new Date().getTime()
+    const deltaMilsecs = now - startTime * 1000
+    return Math.max(0, Math.min(deposit, dayPrice * deltaMilsecs / 24 / 3600 / 1000) - retracted)
+}
