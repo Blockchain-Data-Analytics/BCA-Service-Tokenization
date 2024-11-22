@@ -20,7 +20,7 @@ in one terminal start a node:
 ```sh
 npx hardhat node
 ```
-in the other deploy the contract
+in the other deploy the contracts
 ```sh
 npx hardhat ignition deploy ignition/modules/BCA_Token.ts --network localhost
 npx hardhat ignition deploy ignition/modules/BCA_ServiceManager.ts --network localhost

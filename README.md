@@ -1,48 +1,57 @@
 
-# BCA Service Token
+# BCA Market for Tokenized Services
 
-### Version: 2024-10-02
-### Copyright: 2024 Alexander Diemand
-### [License](./LICENSE): GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
+#### Version: 2024-11-23
+#### Copyright: 2024 Alexander Diemand
+#### [License](./LICENSE): GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
 
 ## Documentation
 
 [see documentation](./doc/README.md)
 
-
 ## Overview
 
-This project is an evaluation of how to use ERC20 tokens on a blockchain to charge users for their usage of our services in micro-payments without incurring massive transaction fees.
-Such a setup shows large flexibility in creating new services and shows great potential for revenue streams from micro-payments.
-Users benefit from keeping control over their budget of service usage costs and only expose a minimal stake at any time.
-Charging for services is done transparently on-chain.
-The user with a positive token balance has access to an agent that helps funding service usage: by time, using fixed budget, ...
+We are developing the tokenization of services and have them managed on a blockchain with smart contracts.
 
-### Why call the internal token GEEZ?
-Our services can be compared to mice which need some cheese from time to time to make them happy.
-We might call that GEEZ (GEZ), similar to Ethereum's GAS.
+The contracts' behaviour is defined by a fixed set of parameters.
 
+Our product creates a market for tokenized services and brings users and service providers together.
+
+![Overview](./doc/img/service_contract.png)
 
 ## Principles & Ideas
 
-- there is an on-chain service token (probably named "BCA") and an internal token (named "GEEZ") for micropayments
-- users aquire the service token using a fiat on-ramp service
-- we mint new tokens to the user on payment in fiat. Later: they might also pay in crypto to some smart contract
-- users own the service tokens and can see them in their wallets
-- before using a service, users transfer a small amount of service tokens to the service's address
-- A GEEZ record of the user's tokens is kept in our database linked to the sender. Proof is the on-chain transaction
-- service usage by the user will be deducte from the user's GEEZ account
-  - (this part could be solved in our own L2 network, one day)
-- users can see their GEEZ balance and transactions in a dashboard
-- users can optionally add monitoring to their GEEZ budget: as soon as it drops below a certain level, then an email is sent to them asking for refunding
+- micropayments in a stable-coin (EUR, USD)
+- alternative: ERC20 token pegged to a currency, on/off-ramp from/to fiat
+- users keep their funds in their wallets, and only commit a small amount in deposits to the service contract
+- optionally, users can subscribe to a bot that deposits every 24 hours the required funds to keep services running
+- at any time either the user or the provider can call stop() and the contract halts
+- at any time both the user and the provider can withdraw funds from the service contract: up to the calculated balance at the current block time
+- the contracts store the necessary information and thus no party relies on a centralized backend for operations
 
+## Micropayments and balance calculation
 
-## Solidity contract and testing
+The service contract is created with a set of parameters which are fixed for the lifetime of the contract.
+
+The calculation of the user's and provider's balances depend on the contracts start time and the current time, taken from the latest block.
+
+Once the user makes her first deposit, the contract starts. Multiple deposits can be made by the user. And, both parties can withdraw up to their calculated balance.
+
+![User and provider balance in the contract](./doc/img/service_micropayment.png)
+
+## Solidity contracts and testing
 
 see [README](./bca-token-solidity/README.md) in directory [./bca-token-solidity](./bca-token-solidity/)
+
+## Frontend to interact with service contracts
+
+Both users and providers connect to this user interface to interact with the service contracts.
+
+see [README](./bca-token-market/README.md) in directory [./bca-token-market](./bca-token-market/)
 
 
 ## Frontend for minting/burning of tokens
 
-see [README](./bca-token-app/README.md) in directory [./bca-token-app](./bca-token-app/)
+Developping and testing is done using our own ERC20 token that mimics a stable-coin.
 
+see [README](./bca-token-app/README.md) in directory [./bca-token-app](./bca-token-app/)
