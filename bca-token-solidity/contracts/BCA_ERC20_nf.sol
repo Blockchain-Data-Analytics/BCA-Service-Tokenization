@@ -13,50 +13,53 @@ contract BCAServiceToken is ERC20, AccessControl {
 
     /**
      * @dev Constructor that sets up roles and gives the deployer the default admin role.
-     * @param name The name of the token.
-     * @param symbol The symbol of the token.
-     * @param minter The address that will be granted the minter role.
-     * @param burner The address that will be granted the burner role.
+     * @param setName The name of the token.
+     * @param setSymbol The symbol of the token.
+     * @param setMinter The address that will be granted the minter role.
+     * @param setBurner The address that will be granted the burner role.
      */
-    constructor(string memory name, string memory symbol, address minter, address burner)
-        ERC20(name, symbol)
+    constructor(string memory setName, string memory setSymbol, address setMinter, address setBurner)
+        ERC20(setName, setSymbol)
     {
+        require(setMinter != address(0), "Invalid minter address");
+        require(setBurner != address(0), "Invalid burner address");
+
         serviceAddress = msg.sender;
-        minterAddress = minter;
-        burnerAddress = burner;
+        minterAddress = setMinter;
+        burnerAddress = setBurner;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, minter);
-        _grantRole(BURNER_ROLE, burner);
+        _grantRole(MINTER_ROLE, setMinter);
+        _grantRole(BURNER_ROLE, setBurner);
     }
 
     /**
      * @dev Allows the admin to set the service address.
-     * @param new_serviceAddress The address to set as the service address.
+     * @param newServiceAddress The address to set as the service address.
      */
-    function setServiceAddress(address new_serviceAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setServiceAddress(address newServiceAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(DEFAULT_ADMIN_ROLE, serviceAddress);
-        serviceAddress = new_serviceAddress;
-        _grantRole(DEFAULT_ADMIN_ROLE, new_serviceAddress);
+        serviceAddress = newServiceAddress;
+        _grantRole(DEFAULT_ADMIN_ROLE, newServiceAddress);
     }
 
     /**
      * @dev Allows the admin to set the minter address.
-     * @param new_minterAddress The address to set as the minter address.
+     * @param newMinterAddress The address to set as the minter address.
      */
-    function setMinterAddress(address new_minterAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMinterAddress(address newMinterAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(MINTER_ROLE, minterAddress);
-        minterAddress = new_minterAddress;
-        _grantRole(MINTER_ROLE, new_minterAddress);
+        minterAddress = newMinterAddress;
+        _grantRole(MINTER_ROLE, newMinterAddress);
     }
 
     /**
      * @dev Allows the admin to set the burner address.
-     * @param new_burnerAddress The address to set as the burner address.
+     * @param newBurnerAddress The address to set as the burner address.
      */
-    function setBurnerAddress(address new_burnerAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBurnerAddress(address newBurnerAddress) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(BURNER_ROLE, burnerAddress);
-        burnerAddress = new_burnerAddress;
-        _grantRole(BURNER_ROLE, new_burnerAddress);
+        burnerAddress = newBurnerAddress;
+        _grantRole(BURNER_ROLE, newBurnerAddress);
     }
 
     /**
