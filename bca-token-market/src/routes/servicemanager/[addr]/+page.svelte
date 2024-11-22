@@ -3,7 +3,7 @@
     import { onMount } from 'svelte'
     import { createForm } from "svelte-forms-lib";
     import { Contract, Web3 } from 'web3'
-    import { serviceManagerABI } from "$lib/contracts.js"
+    import { mk_chainviewer_url, serviceManagerABI, shorten_address } from "$lib/contracts.js"
     import { WalletInformation, reset_warning, get_wallet_addr, wallet_logout } from '$lib/wallet'
 
     export let data
@@ -13,10 +13,16 @@
     onMount ( async () => {
         if (window.ethereum) {
             window.web3 = new Web3(window.ethereum);
+            await local_get_wallet_addr({target: undefined})
+            if (wallet.walletaddr && data && data.addr) {
+                await read_contract()
+            }
         } else {
             wallet.warning = "no web3 wallet attached!"
         }
     })
+
+    $: has_wallet = !!wallet.walletaddr
 
     const is_provider = $page.data.session?.user?.role == "Provider"
 
@@ -31,10 +37,10 @@
     }
 
     let details: { ncontrollers: number; providerAddress: string; controllerAddress: string; } | undefined = undefined
-    async function read_contract(contractAddress: string) {
-        if (window.web3 && wallet.walletaddr && contractAddress) {
+    async function read_contract() {
+        if (window.web3 && has_wallet && data && data.addr) {
 
-            let contract: Contract<typeof serviceManagerABI> = new window.web3.eth.Contract(serviceManagerABI, contractAddress)
+            let contract: Contract<typeof serviceManagerABI> = new window.web3.eth.Contract(serviceManagerABI, data.addr)
             const ncontrollers: number = await contract.methods.countServiceControllers().call()
             let providerAddress: string = ""
             let controllerAddress: string = ""
@@ -49,15 +55,15 @@
     }
 
     async function create_controller(providerAddress: string, useGas: number) {
-        if (window.web3 && wallet.walletaddr !== undefined && data !== undefined && data.addr) {
+        if (window.web3 && has_wallet && data !== undefined && data.addr) {
             const contract = new window.web3.eth.Contract(serviceManagerABI, data.addr);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
             try {
                 const gasPrice = await window.web3.eth.getGasPrice();
                 let estimatedGas = useGas;
                 if (wallet.walletnetwork === "0x89") { // Polygon
-                    let estimatedGas = await contract.methods.newController(providerAddress).estimateGas();
-                    console.log("estimated gas: " + estimatedGas);
+                    estimatedGas = await contract.methods.newController(providerAddress).estimateGas();
+                    // console.log("estimated gas: " + estimatedGas);
                 }
                 const receipt = await contract.methods
                     .newController(providerAddress)
@@ -77,7 +83,7 @@
 
     const { form, handleChange, handleSubmit } = createForm({
         initialValues: {
-            provider: (wallet.walletaddr !== undefined)?wallet.walletaddr:"address",
+            provider: has_wallet?wallet.walletaddr:"address",
             gas: "1450000"
         },
         onSubmit: values => {
@@ -92,31 +98,32 @@
     
     {#if $page.data.session && is_provider}
     
-    <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service Manager - {data.addr}</h2>
+    <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service Manager - {shorten_address(data.addr)}</h2>
 
     <section class="login-section">
-        {#if wallet.walletaddr == undefined}
+        {#if !has_wallet}
         <p><button type="button" class="login-btn" on:click={ (ev) => local_get_wallet_addr(ev) }>🔓 Log in with Web3</button></p>
         <span class="instruction">
           Ensure to have an Ethereum based wallet installed i.e MetaMask. Change the network and account in the wallet and 
           click the button again to update the app's state.
         </span>
         {:else}
-        <p><button type="button" class="logout-btn" on:click={ () => local_wallet_logout() }>🔐 Log out</button></p>
-        <span>        network: {wallet.walletnetwork} </span>
-        <span>        address: {wallet.walletaddr} </span>
+        <p>connected to
+        <span> network: {wallet.walletnetwork} </span>
+        <span> with address: {wallet.walletaddr} </span>
+        <button type="button" class="logout-btn" on:click={ () => local_wallet_logout() }>🔐 Log out</button></p>
         {/if}
     </section>
     
-    <button type="button" on:click={() => read_contract(data.addr)}>show</button>
+    <p><button type="button" class="{has_wallet ? "w3-theme" : 'w3-disabled'}" on:click={() => has_wallet && read_contract()}><i class="fa fa-refresh"></i></button></p>
 
-    {#if details !== undefined && wallet.walletaddr !== undefined}
+    {#if details !== undefined && has_wallet}
+    <p>service manager address: {@html mk_chainviewer_url(data.addr, wallet.walletnetwork)}</p>
     {#if details.ncontrollers > 0}
-    <p>number of controllers: {details.ncontrollers}</p>
-    <p>provider address: {details.providerAddress}</p>
-    <p>controller address: {details.controllerAddress}</p>
-    <p><a href={"/servicecontroller/" + details.controllerAddress}>controller</a></p>
-    {:else}
+    <!-- <p>number of controllers: {details.ncontrollers}</p> -->
+    <p>provider address: {@html mk_chainviewer_url(details.providerAddress, wallet.walletnetwork)}</p>
+    <p>provider's controller: <a href={"/servicecontroller/" + details.controllerAddress}>{shorten_address(details.controllerAddress)}</a></p>
+    {:else if is_provider}
     <section class="action">
         <h3>Create controller</h3>
         <form on:submit={handleSubmit}>
@@ -140,9 +147,6 @@
           </form>
     </section>    
     {/if}
-    <!-- {#each details.controllers as controller}
-        <p>{controller}</p>
-    {/each} -->
     {/if}
 
     {/if}

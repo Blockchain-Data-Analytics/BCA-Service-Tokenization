@@ -39,3 +39,19 @@ export function calculate_provider_balance(deposit: number, retracted: number, s
     const deltaMilsecs = now - startTime * 1000
     return Math.max(0, Math.min(deposit, dayPrice * deltaMilsecs / 24 / 3600 / 1000) - retracted)
 }
+
+// chain viewer url
+export function mk_chainviewer_url(address: string, network: string|undefined): string {
+    if (network === "0x89") {
+        return `<span class=\"w3-tooltip\"><a href=\"https://polygonscan.com/address/${address}\">${address}</a> <span class=\"w3-text w3-tag\"> on Polygon network: ${network} </span></span>`
+    } else if (network === "0x80002") {
+        return `<span class=\"w3-tooltip\"><a href=\"https://amoy.polygonscan.com/address/${address}\">${address}</a> <span class=\"w3-text w3-tag\"> on Polygon's Amoy network: ${network} </span></span>`
+    } else {
+        return `<span class=\"w3-tooltip\">${address} <span class=\"w3-text w3-tag\"> on network: ${network} </span></span>`
+    }
+}
+
+// utilities
+export function shorten_address(address: string, len: number = 6) {
+    return address.substring(0,len) + ".." + address.substring(address.length - len + 1)
+}

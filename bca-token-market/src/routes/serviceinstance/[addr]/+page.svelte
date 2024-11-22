@@ -3,7 +3,7 @@
     import { onMount } from 'svelte'
     import { createForm } from "svelte-forms-lib";
     import { Contract, Web3 } from 'web3'
-    import { serviceInstanceABI, tokenContractABI, token_symbol, token_decimals, calculate_user_balance, calculate_provider_balance } from "$lib/contracts.js"
+    import { serviceInstanceABI, tokenContractABI, token_symbol, token_decimals, calculate_user_balance, calculate_provider_balance, mk_chainviewer_url } from "$lib/contracts.js"
     import { WalletInformation, reset_warning, get_wallet_addr, wallet_logout } from '$lib/wallet'
     import { number } from "zod";
 
@@ -14,7 +14,10 @@
     onMount ( async () => {
         if (window.ethereum) {
             window.web3 = new Web3(window.ethereum);
-            local_get_wallet_addr({target: undefined})
+            await local_get_wallet_addr({target: undefined})
+            if (wallet.walletaddr && data && data.addr) {
+                await read_contract()
+            }
         } else {
             wallet.warning = "no web3 wallet attached!"
         }
@@ -34,23 +37,11 @@
         reset_warning(wallet);
     }
 
-    const locale = 'en'  // better get this from the browser
-    const options: Intl.DateTimeFormatOptions = {
-        weekday: undefined,
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    }
-    const date_formatter = new Intl.DateTimeFormat(locale, options)
-
     let details: { dayPrice: number; deposit: number; retracted: number; startTime: number; endTime: number; userAddress: string; providerAddress: string; tokenAddress: string } | undefined = undefined
-    async function read_contract(contractAddress: string) {
-        if (window.web3 && wallet.walletaddr && contractAddress) {
+    async function read_contract() {
+        if (window.web3 && has_wallet && data && data.addr) {
 
-            let contract: Contract<typeof serviceInstanceABI> = new window.web3.eth.Contract(serviceInstanceABI, contractAddress)
+            let contract: Contract<typeof serviceInstanceABI> = new window.web3.eth.Contract(serviceInstanceABI, data.addr)
             const dayPrice: number = Number(await contract.methods.dayPrice().call())
             const deposit: number = Number(await contract.methods.deposit().call())
             const retracted: number = Number(await contract.methods.retracted().call())
@@ -72,7 +63,7 @@
 
     let contractevents = undefined   //: { event: string, blockNumber: string, blockHash: string, transactionHash: string, address: string, returnValues: Record<string,string>, topics: string[] }[] | undefined = undefined
     async function list_events() {
-        if (window.web3 && wallet.walletaddr !== undefined && data !== undefined && data.addr) {
+        if (window.web3 && has_wallet && data !== undefined && data.addr) {
             let contract: Contract<typeof serviceInstanceABI> = new window.web3.eth.Contract(serviceInstanceABI, data.addr)    
             contract.getPastEvents('ALLEVENTS', { fromBlock: 0, toBlock: 'latest'}).then(function (events) {
                 if (events.length) {
@@ -102,7 +93,7 @@
         return 0n
     }
     async function withdraw_user(amount: number, useGas: number) {
-        if (window.web3 && wallet.walletaddr !== undefined && data !== undefined && data.addr) {
+        if (window.web3 && has_wallet && data !== undefined && data.addr) {
             const contract = new window.web3.eth.Contract(serviceInstanceABI, data.addr);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
             try {
@@ -110,8 +101,8 @@
                 const gasPrice = await window.web3.eth.getGasPrice();
                 let estimatedGas = useGas;
                 if (wallet.walletnetwork === "0x89") { // Polygon
-                    let estimatedGas = await contract.methods.withdrawUser(BigInt(amount * one_token)).estimateGas();
-                    console.log("estimated gas: " + estimatedGas);
+                    estimatedGas = await contract.methods.withdrawUser(BigInt(amount * one_token)).estimateGas();
+                    // console.log("estimated gas: " + estimatedGas);
                 }
                 const receipt = await contract.methods
                     .withdrawUser(BigInt(amount * one_token))
@@ -129,7 +120,7 @@
         }
     }
     async function withdraw_provider(amount: number, useGas: number) {
-        if (window.web3 && wallet.walletaddr !== undefined && data !== undefined && data.addr) {
+        if (window.web3 && has_wallet && data !== undefined && data.addr) {
             const contract = new window.web3.eth.Contract(serviceInstanceABI, data.addr);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
             try {
@@ -137,8 +128,8 @@
                 const gasPrice = await window.web3.eth.getGasPrice();
                 let estimatedGas = useGas;
                 if (wallet.walletnetwork === "0x89") { // Polygon
-                    let estimatedGas = await contract.methods.withdrawProvider(BigInt(amount * one_token)).estimateGas();
-                    console.log("estimated gas: " + estimatedGas);
+                    estimatedGas = await contract.methods.withdrawProvider(BigInt(amount * one_token)).estimateGas();
+                    // console.log("estimated gas: " + estimatedGas);
                 }
                 const receipt = await contract.methods
                     .withdrawProvider(BigInt(amount * one_token))
@@ -156,7 +147,7 @@
         }
     }
     async function deposit_user(amount: number, useGas: number) {
-        if (window.web3 && wallet.walletaddr !== undefined && data !== undefined && data.addr && details !== undefined && details.tokenAddress) {
+        if (window.web3 && has_wallet && data !== undefined && data.addr && details !== undefined && details.tokenAddress) {
             const contract = new window.web3.eth.Contract(serviceInstanceABI, data.addr);
             contract.setConfig({ "defaultNetworkId": wallet.walletnetwork });
             try {
@@ -164,7 +155,7 @@
 
                 let token: Contract<typeof tokenContractABI> = new window.web3.eth.Contract(tokenContractABI, details.tokenAddress)
                 const decimals: bigint = await token.methods.decimals().call()
-                console.log(`decimals: ${decimals}`)
+                // console.log(`decimals: ${decimals}`)
                 let contract: Contract<typeof serviceInstanceABI> = new window.web3.eth.Contract(serviceInstanceABI, data.addr)
                 const user_addr = await contract.methods.userAddress().call()
 
@@ -181,7 +172,7 @@
                 
                 if (wallet.walletnetwork === "0x89") { // Polygon
                     estimatedGas = Number(await token.methods.makeDeposit(BigInt(amount * one_token)).estimateGas())
-                    console.log(`estimated gas: ${estimatedGas}`)
+                    // console.log(`estimated gas: ${estimatedGas}`)
                 }
                 contract.methods
                     .makeDeposit(BigInt(amount * one_token))
@@ -231,9 +222,8 @@
 </script>
 
 <div class="w3-container w3-padding-32">
-    
     {#if $page.data.session}
-    <span id="details"></span>
+    <p><span id="details"></span></p>
     <p>&nbsp;</p>
 
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service Instance</h2>
@@ -249,12 +239,7 @@
 
     <section class="addr-section">
         <ul>
-            <li>Contract address: {data.addr}</li>
-            {#if wallet.walletnetwork === "0x89"}
-            <li>PolygonScan: <a href={"https://polygonscan.com/address/"+data.addr}>view</a></li>
-            {:else if wallet.walletnetwork === "0x80002"}
-            <li>PolygonScan: <a href={"https://polygonscan.com/address/"+data.addr}>view</a></li>
-            {/if}
+            <li>Contract address: {@html mk_chainviewer_url(data.addr, wallet.walletnetwork) }</li>
         </ul>
     </section>
 
@@ -266,13 +251,20 @@
           click the button again to update the app's state.
         </span>
         {:else}
-        <p>connected: 
-        <span>        network: {wallet.walletnetwork} </span>
-        <span>        address: {wallet.walletaddr} </span>
+        <p>connected to
+        <span> network: {wallet.walletnetwork} </span>
+        <span> with address: {wallet.walletaddr} </span>
         <button type="button" class="logout-btn" on:click={ () => local_wallet_logout() }>🔐 Log out</button></p>
         {/if}
     </section>
 
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
     <p><br/></p>
     <p><br/></p>
     <p><br/></p>
@@ -296,17 +288,18 @@
     </div>
 
     <div>
-    <p><button type="button" class="{has_wallet ? "w3-theme" : 'w3-disabled'}" on:click={() => has_wallet && read_contract(data.addr)}><i class="fa fa-refresh"></i></button></p>
+    <p><button type="button" class="{has_wallet ? "w3-theme" : 'w3-disabled'}" on:click={() => has_wallet && read_contract()}><i class="fa fa-refresh"></i></button></p>
 
-    {#if details !== undefined && wallet.walletaddr !== undefined}
+    {#if details !== undefined && has_wallet}
     <ul>
+    <li>instance address: {@html mk_chainviewer_url(data.addr, wallet.walletnetwork)}</li>
     <li>daily price: {details.dayPrice / 10**(token_decimals)} {token_symbol}</li>
     <li>user deposit: {details.deposit / 10**(token_decimals)} {token_symbol}</li>
     <li>retracted: {details.retracted / 10**(token_decimals)} {token_symbol}</li>
-    <li>start time: { details.startTime > 0 ? date_formatter.format(details.startTime * 1000) : '' }</li>
-    <li>end time: {details.endTime > 0 ? date_formatter.format(details.endTime * 1000) : (details.startTime > 0 ? "(" + date_formatter.format(details.startTime * 1000 + (details.deposit * 1000 * 24 * 3600 / details.dayPrice)) + ") estimated" : '') }</li>
-    <li>provider address: {details.providerAddress}</li>
-    <li>user address: {details.userAddress}</li>
+    <li>start time: { details.startTime > 0 ? new Date(details.startTime * 1000).toISOString() : '' }</li>
+    <li>end time: {details.endTime > 0 ? new Date(details.endTime * 1000).toISOString() : (details.startTime > 0 ? "(" + new Date(details.startTime * 1000 + (details.deposit * 1000 * 24 * 3600 / details.dayPrice)).toISOString() + ") estimated" : '') }</li>
+    <li>provider address: {@html mk_chainviewer_url(details.providerAddress, wallet.walletnetwork)}</li>
+    <li>user address: {@html mk_chainviewer_url(details.userAddress, wallet.walletnetwork)}</li>
     <li>estimated user balance: { calculate_user_balance(details.deposit, details.startTime, details.dayPrice) / 10**(token_decimals)}  {token_symbol}</li>
     <li>estimated provider balance: { calculate_provider_balance(details.deposit, details.retracted, details.startTime, details.dayPrice) / 10**(token_decimals)}  {token_symbol}</li>
     </ul>
@@ -368,6 +361,13 @@
     <p><br/></p>
     <p><br/></p>
     <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
     <span id="events"></span>
     <p>&nbsp;</p>
     
@@ -390,7 +390,7 @@
             <table class="w3-table w3-bordered">
                 <tr><td>Timestamp:</td><td>
                     {#await get_block_time(cev.blockHash) then timestamp}
-                    {date_formatter.format(Number(timestamp * 1000n))}
+                    {new Date(Number(timestamp * 1000n)).toISOString()}
                     {:catch}
                     <i class="fa fa-thumbs-down"></i> error
                     {/await}
@@ -418,6 +418,13 @@
     <p><br/></p>
     <p><br/></p>
     <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
     <span id="transactions"></span>
     <p>&nbsp;</p>
     
@@ -436,6 +443,21 @@
         <p><br/></p>
         <p><br/></p>
     </div>
+
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
+    <p><br/></p>
 
     {/if}
 </div>

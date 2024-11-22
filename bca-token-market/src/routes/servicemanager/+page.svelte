@@ -11,7 +11,7 @@
     {#if $page.data.session && is_provider}
     
     <h2 class="{is_provider ? 'w3-green' : 'w3-gray'}">Service Manager</h2>
-    <p><a href={"/servicemanager/" + serviceManagerAddress}>Service Manager</a></p>
+    <p>Continue to this system's <a href={"/servicemanager/" + serviceManagerAddress}>Service Manager</a></p>
 
     {/if}
 </div>

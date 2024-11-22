@@ -56,7 +56,7 @@ export async function get_wallet_balance(wallet: WalletInformation, ev: any): Pr
         // await contract.methods.decimals().call().then(console.log);
                 // const decimals = await contract.methods.decimals().call();
         // const decimals = 10;
-        console.log("decimals = " + decimals)
+        // console.log("decimals = " + decimals)
         wallet.walletbalance = Number(await window.web3.eth.getBalance(wallet.walletaddr));
         if (!!wallet.walletbalance) { wallet.walletbalance = wallet.walletbalance / (10 ** decimals) }
         wallet.warning = undefined
@@ -85,8 +85,8 @@ export async function get_wallet_addr(wallet: WalletInformation, ev: any): Promi
 
             wallet.walletaddr = selectedAccount;
             wallet.warning = undefined
-            console.log("address: " + wallet.walletaddr)
-            console.log("network: " + wallet.walletnetwork)
+            // console.log("address: " + wallet.walletaddr)
+            // console.log("network: " + wallet.walletnetwork)
 
         } catch (error) {
             wallet.warning = "error while accessing wallet: " + error;

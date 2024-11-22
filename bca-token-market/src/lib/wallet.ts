@@ -63,8 +63,8 @@ export async function get_wallet_addr(wallet: WalletInformation, ev: any): Promi
 
             wallet.walletaddr = selectedAccount;
             wallet.warning = undefined
-            console.log("address: " + wallet.walletaddr)
-            console.log("network: " + wallet.walletnetwork)
+            // console.log("address: " + wallet.walletaddr)
+            // console.log("network: " + wallet.walletnetwork)
 
         } catch (error) {
             wallet.warning = "error while accessing wallet: " + error;
