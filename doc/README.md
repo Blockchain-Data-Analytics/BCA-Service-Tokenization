@@ -5,6 +5,11 @@
 [Service Tokenization](./Tokenization.md)
 
 
+## The smart contracts
+
+[Smart contracts](./Contracts.md)
+
+
 ## The transactions involved
 
 [Transaction Flow](./Flow.md)
@@ -14,6 +19,13 @@
 
 [Services](./Services.md)
 
+## Testing and estimating Gas costs
+
+[Testing](./Testing.md)
+
+## Deployment
+
+[Deployment](./Deployment.md)
 
 ## User authentication
 
