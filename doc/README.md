@@ -19,6 +19,13 @@
 
 [Services](./Services.md)
 
+## Testing and estimating Gas costs
+
+[Testing](./Testing.md)
+
+## Deployment
+
+[Deployment](./Deployment.md)
 
 ## User authentication
 
