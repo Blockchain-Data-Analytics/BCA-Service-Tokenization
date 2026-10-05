@@ -1,8 +1,8 @@
 
 # BCA Market for Tokenized Services
 
-#### Version: 2024-11-23
-#### Copyright: 2024 Alexander Diemand
+#### Version: 2026-10-05
+#### Copyright: 2024-2026 Alexander Diemand
 #### [License](./LICENSE): GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
 
 ## Documentation
@@ -18,6 +18,8 @@ The contracts' behaviour is defined by a fixed set of parameters.
 Our product creates a market for tokenized services and brings users and service providers together.
 
 ![Overview](./doc/img/service_contract.png)
+
+New and in progress: the same contract also runs on the Cardano network
 
 ## Principles & Ideas
 
