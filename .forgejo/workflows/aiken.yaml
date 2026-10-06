@@ -1,0 +1,55 @@
+name: Aiken contracts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  aiken:
+    name: aiken fmt / check / build
+    runs-on: nixos-amd64
+    container:
+      image: code.blockchain-applied.com/bca/ci-cardano:1.0.0
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: bca-token-plutus
+
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: aiken version
+        run: aiken --version
+
+      - name: aiken fmt --check
+        run: aiken fmt --check
+
+      - name: aiken check (unit tests)
+        run: |
+          set -euo pipefail
+          aiken check | tee /tmp/aiken-check.json
+          jq -r '.modules[] | .name as $m | .tests[] | "\(.status)\t\($m).\(.title)\tmem=\(.execution_units.mem // "-")\tcpu=\(.execution_units.cpu // "-")"' /tmp/aiken-check.json
+
+      # plutus.json is committed; rebuild and fail if it no longer matches the
+      # sources. preamble.compiler is excluded because its build suffix
+      # (v1.1.23+unknown from `cargo install` vs +<commit> from release
+      # binaries) differs between otherwise identical compilers.
+      - name: aiken build + blueprint drift check
+        run: |
+          set -euo pipefail
+          git show HEAD:bca-token-plutus/plutus.json > /tmp/plutus.committed.json
+          aiken build
+          if ! diff -u \
+              <(jq -S 'del(.preamble.compiler)' /tmp/plutus.committed.json) \
+              <(jq -S 'del(.preamble.compiler)' plutus.json); then
+            echo "::error::bca-token-plutus/plutus.json is out of date — run 'aiken build' and commit the result"
+            exit 1
+          fi

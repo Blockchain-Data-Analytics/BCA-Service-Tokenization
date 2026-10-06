@@ -2,16 +2,14 @@
 // (bca-token-plutus/, moves to contracts/cardano/ in plan-reorg.md §8 step 3).
 //
 // Built on the `add-bca-provider` branch of the Evolution SDK fork
-// (github:Blockchain-Data-Analytics/evolution-sdk, package
-// `@evolution-sdk/evolution`, imported here under the git-dependency alias
-// `evolution-sdk-bca` — see package.json). This is a different, newer SDK
-// generation than `@lucid-evolution/lucid` (Promise-based, Blockfrost-only)
-// that this file used until plan-plutus-tokenization.md's first live
-// preprod deployment proved the fork's `BlockchainAppliedProvider` works
-// end-to-end against BCA's own API — no Blockfrost dependency needed.
-// `evolution-sdk-bca` is not published to npm; see this package's README
-// for the one-time local build step required before `npm install` here
-// produces an importable `dist/`.
+// (code.blockchain-applied.com/BCA/evolution-sdk), published to the BCA
+// Forgejo npm registry as `@bca/evolution-sdk` and imported here under the
+// alias `evolution-sdk-bca` — see package.json and this package's README.
+// This is a different, newer SDK generation than `@lucid-evolution/lucid`
+// (Promise-based, Blockfrost-only) that this file used until
+// plan-plutus-tokenization.md's first live preprod deployment proved the
+// fork's `BlockchainAppliedProvider` works end-to-end against BCA's own
+// API — no Blockfrost dependency needed.
 //
 // Scope (plan-reorg.md §6.3 steps 3-4, updated by
 // plan-plutus-tokenization.md): `deploySellerFactory` against
@@ -32,7 +30,7 @@ import {
   PlutusV3,
   Script as ScriptNS,
   type Chain,
-} from "evolution-sdk-bca/packages/evolution/dist/index.js";
+} from "evolution-sdk-bca";
 type Script = ScriptNS.Script;
 
 // Our own wallet is always a plain payment-key address (generated via

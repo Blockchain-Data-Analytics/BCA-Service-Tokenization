@@ -7,45 +7,28 @@ contract backend in `bca-token-plutus/`. Covers `deploySellerFactory`
 see [plan-plutus-tokenization.md](../../plan-plutus-tokenization.md)).
 `defineService`/`openInstance` remain stubs until `service.ak` exists.
 
-## Setup: building the Evolution SDK fork
+## Setup: the Evolution SDK fork
 
-This package depends on `evolution-sdk-bca`, an alias for
-`github:Blockchain-Data-Analytics/evolution-sdk#add-bca-provider` — a fork of
-Cardano's Evolution SDK that adds `BlockchainAppliedProvider`, so transaction
-building/submission goes through BCA's own API instead of Blockfrost. It is
-**not published to npm** and is not a drop-in for the upstream
-`@evolution-sdk/evolution` package (different maintainer, unmerged branch).
+This package depends on `evolution-sdk-bca`, an npm alias for
+`@bca/evolution-sdk` — the `add-bca-provider` branch of the Evolution SDK fork
+at [code.blockchain-applied.com/BCA/evolution-sdk](https://code.blockchain-applied.com/BCA/evolution-sdk),
+which adds `BlockchainAppliedProvider` so transaction building/submission goes
+through BCA's own API instead of Blockfrost. It is not a drop-in for the
+upstream `@evolution-sdk/evolution` package.
 
-`npm install` at the repo root fetches the fork via git, but **does not**
-produce a runnable build — two things npm's git-dependency fetch doesn't
-handle for this monorepo:
-
-1. It fetches the whole `evolution-sdk` monorepo (this package needs is nested
-   at `packages/evolution` inside it), not just the one package.
-2. It does not include `pnpm-lock.yaml` (confirmed: present in the fork's own
-   git history, but absent from what npm's git fetcher lands in
-   `node_modules/evolution-sdk-bca`) and does not run the fork's own
-   `pnpm install` + `turbo build` — so `packages/evolution/dist/` doesn't
-   exist yet after a plain `npm install`.
-
-One-time manual build step (matches `bca-token-plutus/README.md`'s Aiken setup
-in spirit — a non-npm toolchain requirement, documented rather than silently
-automated via a heavy `postinstall`):
+The fork's Forgejo workflow (`.forgejo/workflows/publish-bca-npm.yaml`) builds
+`packages/evolution` on every push to `add-bca-provider` and publishes it to the
+BCA Forgejo npm registry as `@bca/evolution-sdk@<upstream-version>-bca.<sha7>`.
+The repo-root `.npmrc` maps the `@bca` scope to that registry; reading it needs
+a Forgejo access token with `read:package` scope in your user `~/.npmrc`:
 
 ```sh
-# from the repo root, after `npm install`
-cd node_modules/evolution-sdk-bca
-corepack pnpm@9.0.0 install    # pins the version the fork's package.json expects
-corepack pnpm@9.0.0 --filter @evolution-sdk/evolution build
+npm config set //code.blockchain-applied.com/api/packages/BCA/npm/:_authToken <token>
+npm ci   # from the repo root
 ```
 
-This produces `node_modules/evolution-sdk-bca/packages/evolution/dist/`,
-which `src/index.ts` imports directly
-(`evolution-sdk-bca/packages/evolution/dist/index.js`).
-
-Re-run the build step whenever `npm install` refreshes `node_modules`
-(the fetched git dependency is not built automatically), or after pulling a
-newer commit of the fork branch.
+To move to a newer fork commit, bump the exact version in `package.json`
+(`npm:@bca/evolution-sdk@<version>`) and run `npm install` to refresh the lockfile.
 
 ## Config
 

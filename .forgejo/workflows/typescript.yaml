@@ -1,0 +1,42 @@
+name: TypeScript packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: npm ci / check / audit
+    runs-on: nixos-amd64
+    container:
+      image: code.blockchain-applied.com/bca/ci-cardano:1.0.0
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      # @bca/evolution-sdk comes from the BCA Forgejo npm registry (scope
+      # mapping in .npmrc); only the token is injected here.
+      - name: Configure registry auth
+        env:
+          NPM_TOKEN: ${{ secrets.PAT }}
+        run: npm config set "//code.blockchain-applied.com/api/packages/BCA/npm/:_authToken" "${NPM_TOKEN}"
+
+      - name: npm ci
+        run: npm ci --no-fund
+
+      - name: type-check workspaces (tsc --noEmit)
+        run: npm run check
+
+      - name: npm audit (root workspace)
+        run: npm audit --audit-level=moderate
