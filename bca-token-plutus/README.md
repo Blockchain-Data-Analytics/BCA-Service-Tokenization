@@ -1,17 +1,12 @@
 # bca-token-plutus
 
 Cardano/Plutus contract backend for BCA Market for Tokenized Services — mirrors the
-EVM factory hierarchy (`bca-token-solidity/`) as Aiken validators. See
-[plan-reorg.md](../plan-reorg.md) §6 for the design, [../CLAUDE.md](../CLAUDE.md) for
-repo orientation.
+EVM factory hierarchy (`bca-token-solidity/`, see [doc/Contracts.md](../doc/Contracts.md))
+as Aiken validators.
 
 Status: early, not audited, must not hold real funds. `aiken check` covers the pure
 logic and each validator against mock transactions; nothing beyond the first
 `service_instance` version has run on a network yet.
-
-Will move to `contracts/cardano/` as part of the plan's mechanical reorg
-(plan-reorg.md §8 step 3); kept as `bca-token-plutus/` for now so that rename doesn't
-happen ahead of the rest of that step.
 
 ## Layout
 

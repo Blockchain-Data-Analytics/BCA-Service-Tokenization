@@ -5,7 +5,7 @@
 ////
 //// Time is POSIX milliseconds throughout (Cardano's on-chain convention,
 //// see cardano/transaction.ValidityRange), vs. EVM's block.timestamp in
-//// seconds — same arithmetic, different unit, per plan-reorg.md §6.1.
+//// seconds — same arithmetic, different unit.
 
 use aiken/collection/list
 use bca/types.{

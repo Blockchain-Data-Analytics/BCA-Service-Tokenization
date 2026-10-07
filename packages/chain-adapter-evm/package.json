@@ -2,7 +2,7 @@
   "name": "@bca/chain-adapter-evm",
   "version": "0.0.1",
   "private": true,
-  "description": "ChainAdapter implementation over web3.js for the EVM (Solidity) contract hierarchy in contracts/evm. Extracted from bca-token-market/src/lib/contracts.ts and wallet.ts, no behavior change.",
+  "description": "ChainAdapter implementation over web3.js for the EVM (Solidity) contract hierarchy in bca-token-solidity. Extracted from bca-token-market/src/lib/contracts.ts and wallet.ts, no behavior change.",
   "license": "GPL-3.0",
   "type": "module",
   "main": "src/index.ts",

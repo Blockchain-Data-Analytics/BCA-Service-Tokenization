@@ -2,7 +2,7 @@
   "name": "@bca/chain-adapter",
   "version": "0.0.1",
   "private": true,
-  "description": "Chain-neutral interface for the BCA seller-factory contract hierarchy. See plan-reorg.md §4.",
+  "description": "Chain-neutral interface for the BCA seller-factory contract hierarchy.",
   "license": "GPL-3.0",
   "type": "module",
   "main": "src/index.ts",

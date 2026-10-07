@@ -2,7 +2,7 @@
   "name": "bca-service-tokenization",
   "version": "0.0.1",
   "private": true,
-  "description": "Workspace root for shared TS packages (see plan-reorg.md). Existing apps (bca-token-market, bca-token-app, bca-token-solidity, bca-token-db, bca-market-services) keep their own independent toolchains for now — not yet part of this workspace, see plan-reorg.md §8 step 3.",
+  "description": "Workspace root for the shared TS packages in packages/. The apps (bca-token-market, bca-token-app, bca-token-solidity, bca-token-db, bca-market-services) keep their own toolchains and are not part of this workspace.",
   "workspaces": [
     "packages/*"
   ],

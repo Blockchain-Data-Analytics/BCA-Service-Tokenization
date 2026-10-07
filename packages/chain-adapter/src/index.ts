@@ -1,7 +1,6 @@
 // Chain-neutral extension point for new contract backends.
 // Any new chain (EVM, Cardano, ...) implements ChainAdapter once; apps/services
 // depend only on this interface, selected at runtime by `chainId`.
-// See plan-reorg.md §4.
 
 // Opaque, chain-specific identifiers wrapped in branded types so app code never
 // string-concatenates a chain-specific address/script-ref format.
@@ -35,8 +34,7 @@ export interface ServiceParams {
 }
 
 // Mirrors BCA_ServiceInstance's datum fields today (deposit/retracted/startTime/
-// endTime/dayPrice) — same shape ports to the Plutus instance validator's datum,
-// see plan-reorg.md §6.1.
+// endTime/dayPrice) — same shape as the Plutus instance validator's datum.
 export interface InstanceState {
   dayPrice: bigint;
   deposit: bigint;

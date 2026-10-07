@@ -2,7 +2,7 @@
   "name": "@bca/chain-adapter-cardano",
   "version": "0.0.1",
   "private": true,
-  "description": "ChainAdapter implementation over the Cardano Evolution SDK for the Aiken validators in bca-token-plutus/ (contracts/cardano/ after the plan-reorg.md §8 step 3 rename). Covers root_factory (deploySellerFactory) and service_instance (deposit/withdraw/stop/getInstanceState) — see plan-plutus-tokenization.md and plan-reorg.md §6.3 step 3-4.",
+  "description": "ChainAdapter implementation over the BCA Evolution SDK fork for the Aiken validators in bca-token-plutus (root_factory, seller_factory, service_instance).",
   "license": "GPL-3.0",
   "type": "module",
   "main": "src/index.ts",

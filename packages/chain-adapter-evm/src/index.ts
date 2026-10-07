@@ -1,8 +1,8 @@
 // ChainAdapter implementation for the EVM/Solidity contract hierarchy
 // (BCA_ServiceManager -> BCA_ServiceController -> BCA_Service -> BCA_ServiceInstance,
-// see contracts/evm). Extracted from bca-token-market/src/lib/contracts.ts and
+// see bca-token-solidity/contracts). Extracted from bca-token-market/src/lib/contracts.ts and
 // wallet.ts — same web3.js calls the live routes make today, just behind the
-// chain-neutral interface. Not yet wired into any app (plan-reorg.md §8 step 2):
+// chain-neutral interface. Not yet wired into any app:
 // this package proves the abstraction against the live EVM code with zero
 // behavior change to bca-token-market.
 import { Web3 } from "web3";
@@ -24,7 +24,7 @@ import { asAddress, asContractRef, asTokenRef } from "@bca/chain-adapter";
 // AbiItem type from web3 is not exported at the top level in all v4 minor
 // versions; `any[]` keeps this package decoupled from that churn. Callers pass
 // in the same ABI JSON files bca-token-market/update-abi.sh already copies out
-// of the Hardhat build (contracts/evm/artifacts, contracts/evm/ignition/...).
+// of the Hardhat build (bca-token-solidity/artifacts, bca-token-solidity/ignition/...).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AbiItem = any;
 
@@ -111,8 +111,7 @@ export class EvmAdapter implements ChainAdapter {
   }
 
   // BCA_ServiceManager.newController() is void; the new controller's address
-  // is recovered via the getControllerAddress(seller) view getter, same as
-  // the array/mapping lookup pattern documented in plan-reorg.md §6.1.
+  // is recovered via the getControllerAddress(seller) view getter.
   async deploySellerFactory(rootFactory: ContractRef, seller: Address): Promise<ContractRef> {
     const manager = this.serviceManager(rootFactory);
     const from = await this.requireFrom();
