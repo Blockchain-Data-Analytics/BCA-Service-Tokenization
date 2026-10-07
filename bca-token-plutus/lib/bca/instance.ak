@@ -67,8 +67,10 @@ pub fn balance_user(
   }
 }
 
-/// Ports balanceProvider(): elapsed-time earnings capped at what's still
-/// held (deposit - retracted). Frozen at `end_time` once stopped.
+/// Ports balanceProvider(): elapsed-time earnings, capped at the deposit,
+/// minus what the provider already withdrew. Frozen at `end_time` once
+/// stopped. `balance_user + balance_provider == deposit - retracted`, i.e.
+/// exactly what the instance holds.
 pub fn balance_provider(
   deposit: Int,
   retracted: Int,
@@ -82,30 +84,42 @@ pub fn balance_provider(
   } else {
     now
   }
-  let ticks = calc_time - start_time
-  let bal1 = ticks * day_price / day_ms
-  let available = deposit - retracted
-  if bal1 > available {
-    available
+  let earned = ( calc_time - start_time ) * day_price / day_ms
+  let capped = if earned > deposit {
+    deposit
   } else {
-    bal1
+    earned
+  }
+  if capped > retracted {
+    capped - retracted
+  } else {
+    0
+  }
+}
+
+/// Funds worth at most one second (one slot) of service, the same threshold
+/// as BCA_ServiceInstance.sol's `dayPrice / 24 / 3600` with time in seconds.
+pub fn is_dust(remaining: Int, day_price: Int) -> Bool {
+  remaining <= day_price / 86_400
+}
+
+/// A withdrawal leaving only dust behind stops a running instance; on an
+/// already stopped one it keeps `end_time` unchanged.
+fn end_time_after_withdrawal(
+  current: ServiceInstanceDatum,
+  remaining: Int,
+  now: Int,
+) -> Int {
+  if current.end_time == 0 && is_dust(remaining, current.day_price) {
+    now
+  } else {
+    current.end_time
   }
 }
 
 /// Computes the datum a spending transaction must produce at its continuing
 /// output, or `None` if the transition is invalid (mirrors a Solidity
 /// `revert`).
-///
-/// NOTE this deliberately ports a quirk of the original contract: withdraw*
-/// calls `_stop()` whenever the amount left behind would be at or below one
-/// day's price, and `_stop()` itself reverts if the instance is *already*
-/// stopped. So a withdrawal that both (a) drains the instance below the
-/// dust threshold and (b) happens after an explicit `stop()` was already
-/// called, fails outright rather than just skipping the redundant stop. This
-/// looks like an edge-case bug in BCA_ServiceInstance.sol (it blocks a full
-/// withdrawal after `stop()` in that specific case) but is reproduced as-is
-/// rather than silently "fixed" during the port — flag upstream separately
-/// if that's not the intended behavior.
 pub fn next_datum(
   current: ServiceInstanceDatum,
   redeemer: InstanceRedeemer,
@@ -144,23 +158,13 @@ pub fn next_datum(
         if amount <= 0 || amount > avail {
           None
         } else {
-          let would_stop = avail - amount <= current.day_price / day_ms
-          if would_stop && current.end_time != 0 {
-            None
-          } else {
-            let new_end_time = if would_stop {
-              now
-            } else {
-              current.end_time
-            }
-            Some(
-              ServiceInstanceDatum {
-                ..current,
-                deposit: current.deposit - amount,
-                end_time: new_end_time,
-              },
-            )
-          }
+          Some(
+            ServiceInstanceDatum {
+              ..current,
+              deposit: current.deposit - amount,
+              end_time: end_time_after_withdrawal(current, avail - amount, now),
+            },
+          )
         }
       }
 
@@ -179,23 +183,17 @@ pub fn next_datum(
         if amount <= 0 || amount > avail {
           None
         } else {
-          let would_stop = current.deposit - current.retracted - amount < current.day_price / day_ms
-          if would_stop && current.end_time != 0 {
-            None
-          } else {
-            let new_end_time = if would_stop {
-              now
-            } else {
-              current.end_time
-            }
-            Some(
-              ServiceInstanceDatum {
-                ..current,
-                retracted: current.retracted + amount,
-                end_time: new_end_time,
-              },
-            )
-          }
+          Some(
+            ServiceInstanceDatum {
+              ..current,
+              retracted: current.retracted + amount,
+              end_time: end_time_after_withdrawal(
+                current,
+                current.deposit - current.retracted - amount,
+                now,
+              ),
+            },
+          )
         }
       }
 
@@ -250,11 +248,8 @@ pub fn is_authorized(
 // using 0 there would silently test the NotStarted guard instead of the
 // branch the test name claims to cover.
 //
-// `day_price` is set equal to `day_ms` (i.e. exactly 1 unit/ms) so the
-// auto-stop dust threshold (`day_price / day_ms`) comes out to a clean `1`
-// instead of rounding to `0` — the realistic day_price (an 18-decimals token
-// amount) makes that threshold huge, but a threshold of 0 would never fire
-// in these tests and give false confidence in the auto-stop branches.
+// `day_price` is set equal to `day_ms` (1 unit/ms), so one day costs
+// exactly `day_ms` units and the dust threshold (one second's worth) is 1000.
 
 const day_price = 86_400_000
 
@@ -347,13 +342,88 @@ test withdraw_user_full_drain_triggers_stop() {
   )
 }
 
-test withdraw_user_full_drain_after_explicit_stop_fails() {
-  // reproduces the upstream quirk documented on next_datum(): draining to
-  // the dust threshold after the instance is already stopped fails outright
+test withdraw_user_full_drain_after_stop_keeps_end_time() {
   let end_time = start + 2 * day_ms
   let stopped = fresh(1_000_000_000, start, end_time)
   let avail = balance_user(1_000_000_000, start, end_time, day_price, 0)
-  next_datum(stopped, WithdrawUser(avail), start + 10 * day_ms) == None
+  next_datum(stopped, WithdrawUser(avail), start + 10 * day_ms) == Some(
+    ServiceInstanceDatum { ..stopped, deposit: 1_000_000_000 - avail },
+  )
+}
+
+test withdraw_provider_full_drain_after_stop_keeps_end_time() {
+  // user already took their part: only the provider's 2 days are left, and
+  // withdrawing them empties the stopped instance
+  let end_time = start + 2 * day_ms
+  let stopped = fresh(2 * day_price, start, end_time)
+  next_datum(stopped, WithdrawProvider(2 * day_price), start + 10 * day_ms) == Some(
+    ServiceInstanceDatum { ..stopped, retracted: 2 * day_price },
+  )
+}
+
+test withdraw_user_leaving_dust_stops() {
+  let d = fresh(1_000_000_000, start, 0)
+  let now = start + day_ms
+  let avail = balance_user(1_000_000_000, start, 0, day_price, now)
+  // 1000 left = one second's worth
+  next_datum(d, WithdrawUser(avail - 1000), now) == Some(
+    ServiceInstanceDatum {
+      ..d,
+      deposit: 1_000_000_000 - avail + 1000,
+      end_time: now,
+    },
+  )
+}
+
+test withdraw_user_leaving_more_than_dust_keeps_running() {
+  let d = fresh(1_000_000_000, start, 0)
+  let now = start + day_ms
+  let avail = balance_user(1_000_000_000, start, 0, day_price, now)
+  next_datum(d, WithdrawUser(avail - 1001), now) == Some(
+    ServiceInstanceDatum { ..d, deposit: 1_000_000_000 - avail + 1001 },
+  )
+}
+
+test is_dust_is_one_second_of_service() {
+  and {
+    is_dust(1000, day_price),
+    !is_dust(1001, day_price),
+    // below 86_400 units/day one second is worth 0: only an empty balance is dust
+    is_dust(0, 10_000),
+    !is_dust(1, 10_000),
+  }
+}
+
+test balance_provider_subtracts_what_was_withdrawn() {
+  // one day earned = day_price; after withdrawing it nothing is left to claim
+  let now = start + day_ms
+  and {
+    balance_provider(1_000_000_000, 0, start, 0, day_price, now) == day_price,
+    balance_provider(1_000_000_000, day_price, start, 0, day_price, now) == 0,
+  }
+}
+
+test withdraw_provider_cannot_claim_same_earnings_twice() {
+  let now = start + day_ms
+  let after_first = fresh(1_000_000_000, start, 0)
+  let withdrawn = ServiceInstanceDatum { ..after_first, retracted: day_price }
+  next_datum(withdrawn, WithdrawProvider(day_price), now) == None
+}
+
+test balances_add_up_to_what_is_held() {
+  // user withdrew some, provider withdrew some; both claims together equal
+  // exactly the tokens still in the instance
+  let deposit = 1_000_000_000 - 200_000_000
+  let retracted = 50_000_000
+  let now = start + 3 * day_ms
+  balance_user(deposit, start, 0, day_price, now) + balance_provider(
+    deposit,
+    retracted,
+    start,
+    0,
+    day_price,
+    now,
+  ) == deposit - retracted
 }
 
 test withdraw_provider_rejects_over_balance() {

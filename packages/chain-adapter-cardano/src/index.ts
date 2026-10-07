@@ -237,8 +237,13 @@ function balanceUser(d: InstanceDatumFields, now: bigint): bigint {
 function balanceProvider(d: InstanceDatumFields, now: bigint): bigint {
   const calcTime = d.endTime !== 0n ? d.endTime : now;
   const earned = ((calcTime - d.startTime) * d.dayPrice) / DAY_MS;
-  const available = d.deposit - d.retracted;
-  return earned > available ? available : earned;
+  const capped = earned > d.deposit ? d.deposit : earned;
+  return capped > d.retracted ? capped - d.retracted : 0n;
+}
+
+// is_dust + end_time_after_withdrawal: leaving at most one second's worth stops a running instance.
+function endTimeAfterWithdrawal(d: InstanceDatumFields, remaining: bigint, now: bigint): bigint {
+  return d.endTime === 0n && remaining <= d.dayPrice / 86_400n ? now : d.endTime;
 }
 
 function nextAfterUserWithdrawal(d: InstanceDatumFields, amount: bigint, now: bigint): InstanceDatumFields {
@@ -246,11 +251,7 @@ function nextAfterUserWithdrawal(d: InstanceDatumFields, amount: bigint, now: bi
   if (d.startTime === 0n || amount <= 0n || amount > avail) {
     throw new Error(`withdraw: amount ${amount} exceeds user balance ${avail}`);
   }
-  const wouldStop = avail - amount <= d.dayPrice / DAY_MS;
-  if (wouldStop && d.endTime !== 0n) {
-    throw new Error("withdraw: draining a stopped instance below the dust threshold is rejected on-chain");
-  }
-  return { ...d, deposit: d.deposit - amount, endTime: wouldStop ? now : d.endTime };
+  return { ...d, deposit: d.deposit - amount, endTime: endTimeAfterWithdrawal(d, avail - amount, now) };
 }
 
 function nextAfterProviderWithdrawal(d: InstanceDatumFields, amount: bigint, now: bigint): InstanceDatumFields {
@@ -258,11 +259,8 @@ function nextAfterProviderWithdrawal(d: InstanceDatumFields, amount: bigint, now
   if (d.startTime === 0n || amount <= 0n || amount > avail) {
     throw new Error(`withdraw: amount ${amount} exceeds provider balance ${avail}`);
   }
-  const wouldStop = d.deposit - d.retracted - amount < d.dayPrice / DAY_MS;
-  if (wouldStop && d.endTime !== 0n) {
-    throw new Error("withdraw: draining a stopped instance below the dust threshold is rejected on-chain");
-  }
-  return { ...d, retracted: d.retracted + amount, endTime: wouldStop ? now : d.endTime };
+  const remaining = d.deposit - d.retracted - amount;
+  return { ...d, retracted: d.retracted + amount, endTime: endTimeAfterWithdrawal(d, remaining, now) };
 }
 
 export class CardanoAdapter implements ChainAdapter {

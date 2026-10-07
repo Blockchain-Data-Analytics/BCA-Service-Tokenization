@@ -343,6 +343,71 @@ import {
       // the provider withdraws some funds
       await expect(service.serviceContract.connect(service.provider).withdrawProvider(6n * token.one_token / 10n)).to.be.revertedWithCustomError(service.serviceContract, 'InsufficientBalance');
     });
+
+    it("The provider cannot withdraw the same earnings twice.", async function () {
+      const { token, service } = await loadFixture(deployContract);
+
+      const deposit = token.one_token * 1n;
+      await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
+      await service.serviceContract.connect(service.user1).makeDeposit(deposit);
+
+      await time.increase(12 * 3600);
+      const earned = await service.serviceContract.connect(service.provider).balanceProvider();
+      await service.serviceContract.connect(service.provider).withdrawProvider(earned);
+
+      // only the few seconds since the withdrawal are left to claim
+      expect(await service.serviceContract.connect(service.provider).balanceProvider()).to.lessThan(token.one_token / 1000n);
+      await expect(service.serviceContract.connect(service.provider).withdrawProvider(earned)).to.be.revertedWithCustomError(service.serviceContract, 'InsufficientBalance');
+    });
+
+    it("The user's balance stays withdrawable after the provider withdrew.", async function () {
+      const { token, service } = await loadFixture(deployContract);
+
+      const deposit = token.one_token * 1n;
+      await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
+      await service.serviceContract.connect(service.user1).makeDeposit(deposit);
+
+      await time.increase(6 * 3600);
+      const earned = await service.serviceContract.connect(service.provider).balanceProvider();
+      await service.serviceContract.connect(service.provider).withdrawProvider(earned);
+      await service.serviceContract.connect(service.user1).stop();
+
+      const userBalance = await service.serviceContract.connect(service.user1).balanceUser();
+      const providerBalance = await service.serviceContract.connect(service.provider).balanceProvider();
+      const held = await token.tokenContract.balanceOf(service.serviceContract.getAddress());
+      expect(userBalance + providerBalance).to.equal(held);
+    });
+  });
+
+  describe("Withdraw after stop", function () {
+    async function stoppedAfter(seconds: number) {
+      const { token, service } = await loadFixture(deployContract);
+      const deposit = token.one_token * 1n;
+      await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
+      await service.serviceContract.connect(service.user1).makeDeposit(deposit);
+      await time.increase(seconds);
+      await service.serviceContract.connect(service.user1).stop();
+      return { token, service };
+    }
+
+    it("The user can withdraw the full remaining balance after stop.", async function () {
+      const { token, service } = await stoppedAfter(6 * 3600);
+
+      const balance = await service.serviceContract.connect(service.user1).balanceUser();
+      await expect(service.serviceContract.connect(service.user1).withdrawUser(balance)).to.changeTokenBalance(token.tokenContract, service.user1, balance);
+      expect(await service.serviceContract.connect(service.user1).balanceUser()).to.equal(0n);
+    });
+
+    it("Both parties can drain a stopped contract completely.", async function () {
+      const { token, service } = await stoppedAfter(6 * 3600);
+
+      const userBalance = await service.serviceContract.connect(service.user1).balanceUser();
+      await service.serviceContract.connect(service.user1).withdrawUser(userBalance);
+      const providerBalance = await service.serviceContract.connect(service.provider).balanceProvider();
+      await service.serviceContract.connect(service.provider).withdrawProvider(providerBalance);
+
+      expect(await token.tokenContract.balanceOf(service.serviceContract.getAddress())).to.equal(0n);
+    });
   });
 
   });

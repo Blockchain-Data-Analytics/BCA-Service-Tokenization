@@ -341,11 +341,11 @@ fn user_withdrawal(amount: Int) -> Bool {
 
 // price == day_ms, so the user has paid exactly (now - t0) by `now`.
 test withdraw_user_reads_upper_bound() {
-  user_withdrawal(1_000_000_000 - ( one_day + 60_000 - t0 ) - 1_000)
+  user_withdrawal(1_000_000_000 - ( one_day + 60_000 - t0 ) - 10_000)
 }
 
 test withdraw_user_cannot_claim_lower_bound_time() fail {
-  user_withdrawal(1_000_000_000 - ( one_day - t0 ) - 1_000)
+  user_withdrawal(1_000_000_000 - ( one_day - t0 ) - 10_000)
 }
 
 test spend_rejects_input_without_instance_token() fail {

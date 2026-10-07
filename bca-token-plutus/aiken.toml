@@ -2,7 +2,7 @@ name = "bca/cardano-contracts"
 version = "0.0.1"
 compiler = "v1.1.23"
 license = "GPL-3.0"
-description = "Plutus validators mirroring the EVM BCA_ServiceManager -> BCA_ServiceController -> BCA_Service -> BCA_ServiceInstance factory hierarchy. See plan-reorg.md §6. This directory will move to contracts/cardano/ as part of the plan's §8 step 3 mechanical rename; kept as bca-token-plutus/ for now to avoid pre-empting that reorg."
+description = "BCA Market for Tokenized Services: Cardano validators for pay-as-you-go service instances"
 
 [repository]
 user = "Blockchain-Data-Analytics"

@@ -66,6 +66,13 @@ Rules enforced on every state spend:
   **exactly** the state token (plus, for instances, `deposit - retracted` BCA1),
   with no less lovelace than before.
 
+Instance balances follow `BCA_ServiceInstance.sol`: `paid` is elapsed time × `day_price`
+(integer division, rounding in the user's favor); the user's balance is `deposit - paid`,
+the provider's `min(paid, deposit) - retracted`, so both together equal exactly what the
+instance holds. A withdrawal that leaves at most one second's worth of service
+(`day_price / 86_400`, same as the EVM threshold) stops a running instance; on an
+already stopped one it just withdraws, so both parties can always drain it fully.
+
 Instance time handling: the validity range must be finite on both ends and at
 most 10 minutes wide (`max_validity_ms`). The real time lies somewhere in that
 window, and the transaction builder picks the window, so each action reads the bound
@@ -82,8 +89,7 @@ Known gaps:
   `seller_factory` to know the `service_instance` hash, which in turn depends on it.
 - Seller onboarding trusts BCA admin not to onboard the same seller twice (EVM checks
   `isDeployed`); token names stay unique regardless.
-- `withdraw*` after `Stop` cannot drain below the dust threshold (ported upstream
-  quirk, see `next_datum`); `Close` with a remaining balance needs both parties.
+- `Close` with a remaining balance needs both parties.
 - Not audited; no property tests yet.
 
 ## Setup
