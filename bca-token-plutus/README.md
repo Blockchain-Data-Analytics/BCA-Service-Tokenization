@@ -171,6 +171,38 @@ aiken fmt            # format in place
 aiken fmt --check    # CI mode: fail if anything is unformatted
 ```
 
+## Updating Aiken
+
+Dependabot does not cover Aiken, so the compiler and stdlib are updated by hand. Watch
+releases of [aiken-lang/aiken](https://github.com/aiken-lang/aiken/releases) and
+[aiken-lang/stdlib](https://github.com/aiken-lang/stdlib/releases) (GitHub: Watch →
+Custom → Releases) and check at least monthly.
+
+Any compiler or stdlib change can change the compiled code and therefore every script
+hash, address and policy id: treat it as a new deployment, not an in-place upgrade.
+
+**Compiler** — the version is pinned in three places that must match:
+
+1. `aiken.toml`: `compiler = "vX.Y.Z"`.
+2. `docker/Dockerfile.ci-cardano`: `AIKEN_VERSION` and the two release tarball
+   checksums, taken from the release's published digests:
+
+   ```sh
+   curl -fsSL https://api.github.com/repos/aiken-lang/aiken/releases/tags/vX.Y.Z \
+     | jq -r '.assets[] | select(.name | test("unknown-linux-musl.tar.gz$")) | "\(.name) \(.digest)"'
+   ```
+
+3. The CI image tag: bump `VERSION` in `.forgejo/workflows/build-ci-cardano-image.yaml`,
+   let that workflow publish the image, then bump `ci-cardano:<version>` in
+   `.forgejo/workflows/aiken.yaml` and `typescript.yaml` (and in the Evolution SDK
+   fork's `publish-bca-npm.yaml`).
+
+**stdlib** — change `version` under `[[dependencies]]` in `aiken.toml`, then run
+`aiken check` (re-fetches it and updates `aiken.lock`).
+
+In both cases finish with `aiken fmt --check`, `aiken check` and `aiken build`, and
+commit the regenerated `plutus.json` and `aiken.lock`.
+
 ## Next steps
 
 - Property tests for the balance math (`via fuzzer`) and an external audit before

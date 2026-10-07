@@ -32,6 +32,20 @@ jobs:
           NPM_TOKEN: ${{ secrets.PAT }}
         run: npm config set "//code.blockchain-applied.com/api/packages/BCA/npm/:_authToken" "${NPM_TOKEN}"
 
+      # Every non-workspace package must come from a registry tarball with an
+      # integrity hash: git dependencies fail in CI and pin nothing reproducible.
+      - name: lockfile sources are pinned registry tarballs
+        run: |
+          jq -r '.packages | to_entries[]
+            | select(.key != "" and (.value.link | not) and (.key | startswith("packages/") and (contains("/node_modules/") | not) | not))
+            | select((.value.resolved // "" | startswith("https://") | not) or (.value.integrity | not))
+            | "\(.key)\t\(.value.resolved // "-")"' package-lock.json > /tmp/unpinned.txt
+          if [ -s /tmp/unpinned.txt ]; then
+            echo "::error::package-lock.json has dependencies without a registry tarball + integrity:"
+            cat /tmp/unpinned.txt
+            exit 1
+          fi
+
       - name: npm ci
         run: npm ci --no-fund
 
