@@ -7,12 +7,42 @@
 //// see cardano/transaction.ValidityRange), vs. EVM's block.timestamp in
 //// seconds — same arithmetic, different unit, per plan-reorg.md §6.1.
 
+use aiken/collection/list
 use bca/types.{
-  InstanceRedeemer, MakeDeposit, ServiceInstanceDatum, Stop, WithdrawProvider,
-  WithdrawUser,
+  Close, InstanceRedeemer, MakeDeposit, ServiceInstanceDatum, Stop,
+  WithdrawProvider, WithdrawUser,
 }
 
 pub const day_ms: Int = 86_400_000
+
+/// Picks `now` from the transaction's validity window `[lower, upper]`. The
+/// real time lies somewhere in it and the transaction builder chooses it,
+/// so each action reads the bound that is least favorable to the party it
+/// benefits:
+/// - MakeDeposit starts the clock at `lower` (earlier start, depositor pays more)
+/// - WithdrawUser reads `upper` (more time elapsed, user balance smaller)
+/// - WithdrawProvider reads `lower` (less time elapsed, provider earned less)
+/// - Stop reads `upper` when the user signs, `lower` otherwise (provider stop)
+pub fn clock_for(
+  current: ServiceInstanceDatum,
+  redeemer: InstanceRedeemer,
+  lower: Int,
+  upper: Int,
+  signers: List<ByteArray>,
+) -> Int {
+  when redeemer is {
+    MakeDeposit(_) -> lower
+    WithdrawUser(_) -> upper
+    WithdrawProvider(_) -> lower
+    Stop ->
+      if list.has(signers, current.user) {
+        upper
+      } else {
+        lower
+      }
+    Close -> upper
+  }
+}
 
 /// Ports balanceUser(): remaining user principal not yet consumed by
 /// elapsed-time * day_price. Frozen at `end_time` once stopped.
@@ -175,34 +205,39 @@ pub fn next_datum(
       } else {
         Some(ServiceInstanceDatum { ..current, end_time: now })
       }
+
+    // Close has no continuing datum; see can_close().
+    Close -> None
   }
+}
+
+/// Close retires an instance (no continuing output, state token burned).
+/// Only once stopped.
+pub fn can_close(current: ServiceInstanceDatum) -> Bool {
+  current.end_time != 0
 }
 
 /// Ports each entry point's `msg.sender` check. `MakeDeposit` is
 /// unrestricted, same as makeDeposit() today (its AlreadySubscribed check is
-/// commented out in BCA_ServiceInstance.sol).
+/// commented out in BCA_ServiceInstance.sol). `Close` needs either party once
+/// no BCA1 is left, otherwise both (they settle the remainder between them).
 pub fn is_authorized(
   current: ServiceInstanceDatum,
   redeemer: InstanceRedeemer,
   signers: List<ByteArray>,
 ) -> Bool {
+  let user_signed = list.has(signers, current.user)
+  let provider_signed = list.has(signers, current.provider)
   when redeemer is {
     MakeDeposit(_) -> True
-    WithdrawUser(_) -> list_has(signers, current.user)
-    WithdrawProvider(_) -> list_has(signers, current.provider)
-    Stop ->
-      list_has(signers, current.user) || list_has(signers, current.provider)
-  }
-}
-
-fn list_has(xs: List<ByteArray>, needle: ByteArray) -> Bool {
-  when xs is {
-    [] -> False
-    [x, ..rest] ->
-      if x == needle {
-        True
+    WithdrawUser(_) -> user_signed
+    WithdrawProvider(_) -> provider_signed
+    Stop -> user_signed || provider_signed
+    Close ->
+      if current.deposit - current.retracted == 0 {
+        user_signed || provider_signed
       } else {
-        list_has(rest, needle)
+        user_signed && provider_signed
       }
   }
 }
@@ -234,6 +269,7 @@ fn fresh(deposit: Int, start_time: Int, end_time: Int) -> ServiceInstanceDatum {
     end_time,
     user: "user",
     provider: "provider",
+    service: "service",
   }
 }
 
@@ -377,4 +413,47 @@ test is_authorized_withdraw_user_requires_user_signature() {
 test is_authorized_stop_accepts_either_party() {
   let d = fresh(0, start, 0)
   is_authorized(d, Stop, ["user"]) && is_authorized(d, Stop, ["provider"])
+}
+
+test is_authorized_withdraw_provider_requires_provider_signature() {
+  let d = fresh(0, start, 0)
+  !is_authorized(d, WithdrawProvider(1), ["user"]) && is_authorized(
+    d,
+    WithdrawProvider(1),
+    ["provider"],
+  )
+}
+
+test is_authorized_close_drained_accepts_either_party() {
+  let d = fresh(0, start, 2000)
+  is_authorized(d, Close, ["user"]) && is_authorized(d, Close, ["provider"])
+}
+
+test is_authorized_close_with_remaining_balance_needs_both() {
+  let d = fresh(10, start, 2000)
+  and {
+    !is_authorized(d, Close, ["user"]),
+    !is_authorized(d, Close, ["provider"]),
+    is_authorized(d, Close, ["user", "provider"]),
+  }
+}
+
+test can_close_only_when_stopped() {
+  !can_close(fresh(0, start, 0)) && can_close(fresh(0, start, 2000))
+}
+
+test next_datum_close_has_no_continuing_datum() {
+  next_datum(fresh(0, start, 2000), Close, 5000) == None
+}
+
+test clock_for_picks_bound_against_the_beneficiary() {
+  let d = fresh(1_000, start, 0)
+  and {
+    clock_for(d, MakeDeposit(1), 10, 20, []) == 10,
+    clock_for(d, WithdrawUser(1), 10, 20, ["user"]) == 20,
+    clock_for(d, WithdrawProvider(1), 10, 20, ["provider"]) == 10,
+    clock_for(d, Stop, 10, 20, ["user"]) == 20,
+    clock_for(d, Stop, 10, 20, ["provider"]) == 10,
+    clock_for(d, Stop, 10, 20, ["user", "provider"]) == 20,
+  }
 }

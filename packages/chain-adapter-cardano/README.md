@@ -1,11 +1,11 @@
 # @bca/chain-adapter-cardano
 
 `ChainAdapter` implementation (see `packages/chain-adapter`) for the Cardano/Aiken
-contract backend in `bca-token-plutus/`. Covers `deploySellerFactory`
-(`root_factory.ak`) and `deposit`/`withdraw`/`stop`/`getInstanceState`
-(`instance.ak`'s `service_instance` — proven against a live preprod deployment,
-see [plan-plutus-tokenization.md](../../plan-plutus-tokenization.md)).
-`defineService`/`openInstance` remain stubs until `service.ak` exists.
+contracts in `bca-token-plutus/` (on-chain model: that directory's README).
+Covers the whole hierarchy: `deploySellerFactory` (onboard seller),
+`defineService`, `openInstance`, `deposit`/`withdraw`/`stop`/`getInstanceState`,
+plus Cardano-only `close()`. Every returned `ContractRef` is the unit
+(policy id + asset name, hex) of that level's state token.
 
 ## Setup: the Evolution SDK fork
 
@@ -32,33 +32,37 @@ To move to a newer fork commit, bump the exact version in `package.json`
 
 ## Config
 
-`CardanoAdapter.init(config)` takes compiled validator CBOR, not source —
-this package does not run `aiken build`/`aiken blueprint apply` itself. Produce
-`instance.compiledCodeHex` (and `rootFactory.compiledCodeHex`, if using
-`deploySellerFactory`) by applying that validator's parameters against
-`bca-token-plutus/plutus.json` first:
+`CardanoAdapter.init(config)` takes the three applied validators — this package does
+not run `aiken build`/`aiken blueprint apply` itself. Apply parameters in dependency
+order against `bca-token-plutus/plutus.json` (each parameter is CBOR-encoded Plutus
+data, so a 28-byte hash is `581c<hash>`):
 
 ```sh
 cd bca-token-plutus
-aiken blueprint apply -m instance -v service_instance -o /tmp/step1.json <token_policy_id CBOR>
-aiken blueprint apply -i /tmp/step1.json -m instance -v service_instance -o applied.json <token_asset_name CBOR>
+# 1. root_factory(bca_admin)
+aiken blueprint apply -m root_factory -v root_factory -o /tmp/root.json 581c<bca_admin_pkh>
+# 2. seller_factory(root_factory policy id = root_factory hash from step 1)
+aiken blueprint apply -m seller_factory -v seller_factory -o /tmp/seller.json 581c<root_hash>
+# 3. service_instance(token_policy_id, token_asset_name, seller_factory policy id)
+aiken blueprint apply -m instance -v service_instance -o /tmp/i1.json 581c<bca1_policy_id>
+aiken blueprint apply -i /tmp/i1.json -m instance -v service_instance -o /tmp/i2.json <asset_name_cbor>
+aiken blueprint apply -i /tmp/i2.json -m instance -v service_instance -o /tmp/instance.json 581c<seller_factory_hash>
 ```
 
-See [plan-plutus-tokenization.md](../../plan-plutus-tokenization.md) for the
-exact CBOR-encoding steps and a worked example (policy id, asset name,
-resulting script address) from the first live deployment.
+Each step's hash is the validator's `hash` in its output file. Pass each script's
+`compiledCode` and its bech32 script address (`rootFactory`, `sellerFactory`,
+`instance`); policy ids are read from the addresses. `rootFactory.bcaAdminPkh` is the
+admin key that must sign onboarding, and `instance.tokenPolicyId`/`tokenAssetNameHex`
+identify the BCA1 token.
+
+Transactions follow the on-chain rules: instance spends use a validity window of
+5 minutes starting 60 s in the past (on-chain limit 10 minutes), and compute the next
+datum with the same bound the validator reads for that action.
 
 ## Known limitations
 
-- `deposit`/`withdraw`/`stop`/`getInstanceState` look up the instance's
-  current UTxO by scanning `config.instance.scriptAddress` and require
-  **exactly one** UTxO there. There is no on-chain way yet to distinguish
-  multiple concurrent instances at the same script address — that needs
-  `service.ak`'s state-thread-token pattern (plan-reorg.md §6.1), not
-  implemented yet. Fine for single-instance testing/demos, not for
-  production multi-tenant use.
-- `deploySellerFactory` is ported to this SDK generation but **not** yet
-  exercised against a live network (unlike the instance methods) — verify
-  before relying on it.
-- `subscribeEvents` is unimplemented (needs polling semantics that aren't
-  well-defined until multiple instances can exist).
+- `deploySellerFactory` needs the connected wallet to be the BCA admin,
+  `defineService` the seller; `close()` with a remaining balance needs a second
+  signature from the other party, which this adapter does not collect.
+- `subscribeEvents` is unimplemented (needs UTxO polling by policy id).
+- None of the new flow has run against a network yet.

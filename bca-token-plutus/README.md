@@ -5,11 +5,9 @@ EVM factory hierarchy (`bca-token-solidity/`) as Aiken validators. See
 [plan-reorg.md](../plan-reorg.md) §6 for the design, [../CLAUDE.md](../CLAUDE.md) for
 repo orientation.
 
-Status: `aiken build` and `aiken check` both pass (0 errors, 0 warnings, 23/23 tests)
-against `compiler = "v1.1.23"` / `aiken-lang/stdlib v2.1.0`. Still an early scaffold
-though — `root_factory`/`seller_factory`/`instance` exist, `service.ak`/`funder.ak`
-don't yet, and none of it has been exercised against a real transaction (emulator or
-testnet), only type-checked and unit-tested.
+Status: early, not audited, must not hold real funds. `aiken check` covers the pure
+logic and each validator against mock transactions; nothing beyond the first
+`service_instance` version has run on a network yet.
 
 Will move to `contracts/cardano/` as part of the plan's mechanical reorg
 (plan-reorg.md §8 step 3); kept as `bca-token-plutus/` for now so that rename doesn't
@@ -19,30 +17,74 @@ happen ahead of the rest of that step.
 
 ```
 bca-token-plutus/
-├── aiken.toml            # project manifest + stdlib dependency
+├── aiken.toml              # project manifest + stdlib dependency
 ├── validators/
-│   ├── root_factory.ak   # BCA mints one "seller factory" auth token per seller
-│   ├── seller_factory.ak # seller mints one "service" auth token per newService()
-│   └── instance.ak       # `service_instance` validator — the contract a client
-│                         #   funds; thin glue around lib/bca/instance.ak
+│   ├── root_factory.ak     # BCA onboards sellers; holds each seller's state UTxO
+│   ├── seller_factory.ak   # sellers define services; holds each service's state UTxO
+│   └── instance.ak         # `service_instance`: opens instances (mint) and runs
+│                           #   deposit/withdraw/stop/close (spend)
 └── lib/bca/
-    ├── types.ak          # shared datum/redeemer types, asset-name encoding + tests
-    └── instance.ak       # pure port of BCA_ServiceInstance.sol's business logic
-                          #   (balance math, state transitions, auth) + its tests
+    ├── types.ak            # datums, redeemers, state-token naming
+    ├── tx.ak               # validity window, own inputs/outputs, continuing-output rule
+    └── instance.ak         # pure port of BCA_ServiceInstance.sol (balance math,
+                            #   state transitions, auth, per-side clock)
 ```
 
-Aiken only compiles `lib/` and `validators/` — there's no separate top-level `test/`
-directory convention like Cargo's. Tests are `test name() { ... }` blocks written
-inline, right next to the function they cover (see the bottom of `lib/bca/types.ak`
-and `lib/bca/instance.ak`). A `test/` dir at the project root is silently ignored,
-not an error.
+## On-chain model
 
-`service.ak` (the `newInstance()`/service-definition equivalent that *creates* an
-instance UTxO) and `funder.ak` are not scaffolded yet — planned for plan-reorg.md §6.3
-step 4. `validators/instance.ak` currently assumes its datum already exists at the
-script address; it only covers funding/withdrawing/stopping an instance that's already
-open, same as BCA_ServiceInstance.sol only covering what happens after
-BCA_Service.newInstance() deploys it.
+Every level's state is a UTxO holding exactly one **state token**. Each validator is
+both the minting policy of its tokens and the spending validator of the UTxOs that
+hold them (one script hash), and is parameterized only by its parent's hash:
+
+| level    | validator (params)                                                   | token name                         | datum                  |
+|----------|----------------------------------------------------------------------|------------------------------------|------------------------|
+| seller   | `root_factory(bca_admin)`                                            | seller key hash                    | `SellerFactoryDatum`   |
+| service  | `seller_factory(root_factory_policy_id)`                             | `unique_asset_name(seller UTxO)`   | `ServiceDatum`         |
+| instance | `service_instance(token_policy_id, token_asset_name, seller_factory_policy_id)` | `unique_asset_name(service UTxO)` | `ServiceInstanceDatum` |
+
+Flow, mirroring the EVM contracts:
+
+1. **Onboard seller** (`BCA_ServiceManager.newController`): `root_factory` mints the
+   seller token, BCA admin signs, and it is locked at the `root_factory` address with
+   `service_count = 0`.
+2. **Define service** (`BCA_ServiceController.newService`): the seller spends their
+   seller state (`service_count` + 1), and `seller_factory` mints the service token
+   into a service state UTxO whose `service_index` is the old count.
+3. **Open instance** (`BCA_Service.newInstance`): anyone spends a service state
+   (`instance_count` + 1, at most `max_instances`), and `service_instance` mints the
+   instance token into an instance UTxO with deposit 0 and price/provider/service
+   copied from the service.
+4. **Use the instance**: `MakeDeposit`, `WithdrawUser`, `WithdrawProvider`, `Stop`,
+   then `Close` (burns the instance token once stopped).
+
+Rules enforced on every state spend:
+
+- the input holds its state token, so datums someone else locks at a script
+  address are never accepted as state;
+- it is the only input from that script (no batching), and there is exactly one
+  output back to the **same address** (payment and stake credential) holding
+  **exactly** the state token (plus, for instances, `deposit - retracted` BCA1),
+  with no less lovelace than before.
+
+Instance time handling: the validity range must be finite on both ends and at
+most 10 minutes wide (`max_validity_ms`). The real time lies somewhere in that
+window, and the transaction builder picks the window, so each action reads the bound
+that works against the party it benefits (`clock_for`): the first deposit
+starts the clock at the lower bound, a user withdrawal reads the upper bound, a
+provider withdrawal the lower bound, and `Stop` the upper bound if the user signs,
+the lower one otherwise. Bounds should be whole seconds (slot-granular).
+
+Known gaps:
+
+- Bumping a service's `instance_count` without opening an instance is possible
+  (it only costs fees). That's the same as calling the permissionless
+  `BCA_Service.newInstance()` with junk users on EVM. Closing it would need
+  `seller_factory` to know the `service_instance` hash, which in turn depends on it.
+- Seller onboarding trusts BCA admin not to onboard the same seller twice (EVM checks
+  `isDeployed`); token names stay unique regardless.
+- `withdraw*` after `Stop` cannot drain below the dust threshold (ported upstream
+  quirk, see `next_datum`); `Close` with a remaining balance needs both parties.
+- Not audited; no property tests yet.
 
 ## Setup
 
@@ -96,18 +138,9 @@ whether the scaffold above actually compiles.
 aiken check
 ```
 
-Runs every `test name() { ... }` block found in `lib/` and `validators/`: 21 in
-`lib/bca/instance.ak` covering `balance_user`/`balance_provider`/`next_datum`/
-`is_authorized`, plus 2 in `lib/bca/types.ak` for `index_to_asset_name` — 23 total,
-0 failed.
-
-Note the actual validators (`root_factory`, `seller_factory`, `service_instance`)
-aren't directly exercised by `aiken check` — their business logic is pulled out into
-plain functions in `lib/bca/instance.ak` specifically so it's unit-testable without
-constructing a mock `Transaction`; the validators themselves are thin glue (decode
-datum/redeemer, find the continuing output, delegate). Testing a validator end-to-end
-(with real inputs/outputs/mint fields) needs an off-chain emulator — not set up yet,
-tracked alongside `packages/chain-adapter-cardano`.
+Runs every `test name() { ... }` block in `lib/` and `validators/`: the pure
+functions in `lib/bca/` plus each validator handler called directly against mock
+transactions (happy path and one rejection per rule above).
 
 Add a `test name() { ... }` next to any new pure function the same way.
 
@@ -140,16 +173,8 @@ aiken fmt --check    # CI mode: fail if anything is unformatted
 
 ## Next steps
 
-With `root_factory.ak`/`seller_factory.ak`/`instance.ak` type-checking, building, and
-unit-testing clean, the plan (plan-reorg.md §6.3) continues with:
-
-- `service.ak` — the `newInstance()` equivalent that actually creates an instance
-  UTxO (mints its state token, locks its initial zero-deposit datum); `instance.ak`
-  currently assumes that UTxO already exists.
+- Property tests for the balance math (`via fuzzer`) and an external audit before
+  any mainnet funds.
 - `funder.ak`, mirroring `BCA_Funding24`'s at-most-once-per-24h auto-funding.
-- `packages/chain-adapter-cardano` (already scaffolded) wired against the real
-  compiled blueprint from `aiken build` instead of placeholder config, and extended
-  past `deploySellerFactory` to cover `deposit`/`withdraw`/`stop`/`getInstanceState`
-  against `service_instance` once an emulator/testnet round-trip validates it.
-- Deployment to Cardano Preprod testnet via Blockfrost, surfaced first as an opt-in
-  chain in `bca-console`.
+- Re-deploy to preprod: the datum layout and validator parameters changed, so
+  the first preprod deployment of `service_instance` is incompatible.
