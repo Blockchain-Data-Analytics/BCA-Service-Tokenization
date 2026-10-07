@@ -170,6 +170,22 @@ random cases by default; increase for CI-grade confidence with:
 aiken check --max-success 1000
 ```
 
+## Execution budgets
+
+`budgets.json` caps the execution units (mem/cpu) of every validator handler, measured
+by its happy-path test in `validators/*.ak`, and lists which handlers each real
+transaction runs together (e.g. opening an instance runs `seller_factory.spend` and
+`service_instance.mint`), whose sum must stay within the protocol's per-transaction
+limit. CI runs:
+
+```sh
+scripts/check-budgets.sh            # prints usage vs budget, fails if over
+scripts/check-budgets.sh --update   # after a deliberate change: budgets = usage + 25%
+```
+
+The measurements include building the mock transaction inside the test, so real
+on-chain cost is somewhat lower.
+
 ## Format & lint
 
 ```sh

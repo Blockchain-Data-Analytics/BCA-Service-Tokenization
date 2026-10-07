@@ -35,8 +35,12 @@ jobs:
       - name: aiken check (unit tests)
         run: |
           set -euo pipefail
-          aiken check | tee /tmp/aiken-check.json
-          jq -r '.modules[] | .name as $m | .tests[] | "\(.status)\t\($m).\(.title)\tmem=\(.execution_units.mem // "-")\tcpu=\(.execution_units.cpu // "-")"' /tmp/aiken-check.json
+          aiken check > /tmp/aiken-check.json
+          jq -r '.modules[] | .name as $m | .tests[] | "\(.status)\t\($m).\(.title)"' /tmp/aiken-check.json
+          jq -e '.summary.failed == 0' /tmp/aiken-check.json > /dev/null
+
+      - name: execution-unit budgets
+        run: scripts/check-budgets.sh /tmp/aiken-check.json
 
       # plutus.json is committed; rebuild and fail if it no longer matches the
       # sources. preamble.compiler is excluded because its build suffix

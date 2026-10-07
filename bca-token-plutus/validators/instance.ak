@@ -28,9 +28,9 @@ use bca/tx.{
   validity_window,
 }
 use bca/types.{
-  BurnInstance, Close, InstanceMintRedeemer, InstanceRedeemer, OpenInstance,
-  ServiceDatum, ServiceInstanceDatum, WithdrawProvider, WithdrawUser,
-  unique_asset_name,
+  BurnInstance, Close, InstanceMintRedeemer, InstanceRedeemer, MakeDeposit,
+  OpenInstance, ServiceDatum, ServiceInstanceDatum, Stop, WithdrawProvider,
+  WithdrawUser, unique_asset_name,
 }
 use cardano/address.{Address, Script, VerificationKey}
 use cardano/assets.{AssetName, PolicyId, Value}
@@ -394,6 +394,56 @@ test spend_rejects_second_own_input() fail {
   )
 }
 
+test make_deposit_starts_clock_at_lower_bound() {
+  let current = ServiceInstanceDatum {
+    ..instance_datum(0, 0, 0),
+    start_time: 0,
+  }
+  let next = ServiceInstanceDatum {
+    ..current,
+    deposit: 1_000_000_000,
+    start_time: one_day,
+  }
+  spend(
+    current,
+    MakeDeposit(1_000_000_000),
+    spend_tx(
+      instance_output(current, min_ada),
+      [instance_output(next, min_ada)],
+      one_day,
+      one_day + 60_000,
+      [],
+    ),
+  )
+}
+
+fn stop_by(signer: ByteArray, end_time: Int) -> Bool {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  spend(
+    current,
+    Stop,
+    spend_tx(
+      instance_output(current, min_ada),
+      [instance_output(ServiceInstanceDatum { ..current, end_time }, min_ada)],
+      one_day,
+      one_day + 60_000,
+      [signer],
+    ),
+  )
+}
+
+test stop_by_user_reads_upper_bound() {
+  stop_by(user_pkh, one_day + 60_000)
+}
+
+test stop_by_provider_reads_lower_bound() {
+  stop_by(provider_pkh, one_day)
+}
+
+test stop_by_provider_cannot_use_upper_bound() fail {
+  stop_by(provider_pkh, one_day + 60_000)
+}
+
 fn close_tx(
   current: ServiceInstanceDatum,
   signers: List<ByteArray>,
@@ -435,6 +485,34 @@ test close_rejects_running_instance() fail {
       [user_pkh],
       assets.from_asset(own_hash, instance_token, -1),
     ),
+  )
+}
+
+test burn_instance_mint_succeeds() {
+  service_instance.mint(
+    bca1_policy,
+    bca1_name,
+    seller_factory_hash,
+    BurnInstance,
+    own_hash,
+    Transaction {
+      ..transaction.placeholder,
+      mint: assets.from_asset(own_hash, instance_token, -1),
+    },
+  )
+}
+
+test burn_instance_rejects_minting() fail {
+  service_instance.mint(
+    bca1_policy,
+    bca1_name,
+    seller_factory_hash,
+    BurnInstance,
+    own_hash,
+    Transaction {
+      ..transaction.placeholder,
+      mint: assets.from_asset(own_hash, instance_token, 1),
+    },
   )
 }
 

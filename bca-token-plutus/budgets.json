@@ -1,0 +1,92 @@
+{
+  "max_tx_ex_units": {
+    "mem": 14000000,
+    "cpu": 10000000000
+  },
+  "handlers": {
+    "root_factory.onboard_seller_locks_state": {
+      "label": "root_factory.mint OnboardSeller",
+      "mem": 155000,
+      "cpu": 50791000
+    },
+    "root_factory.seller_state_bumps_by_one": {
+      "label": "root_factory.spend",
+      "mem": 273000,
+      "cpu": 94823000
+    },
+    "seller_factory.define_service_takes_index_from_seller_state": {
+      "label": "seller_factory.mint DefineService",
+      "mem": 300000,
+      "cpu": 99884000
+    },
+    "seller_factory.service_state_counts_instances": {
+      "label": "seller_factory.spend",
+      "mem": 327000,
+      "cpu": 113380000
+    },
+    "instance.open_instance_succeeds": {
+      "label": "service_instance.mint OpenInstance",
+      "mem": 302000,
+      "cpu": 101321000
+    },
+    "instance.burn_instance_mint_succeeds": {
+      "label": "service_instance.mint BurnInstance",
+      "mem": 47000,
+      "cpu": 13421000
+    },
+    "instance.make_deposit_starts_clock_at_lower_bound": {
+      "label": "service_instance.spend MakeDeposit",
+      "mem": 474000,
+      "cpu": 156576000
+    },
+    "instance.withdraw_user_reads_upper_bound": {
+      "label": "service_instance.spend WithdrawUser",
+      "mem": 534000,
+      "cpu": 173830000
+    },
+    "instance.withdraw_provider_succeeds": {
+      "label": "service_instance.spend WithdrawProvider",
+      "mem": 546000,
+      "cpu": 178018000
+    },
+    "instance.stop_by_user_reads_upper_bound": {
+      "label": "service_instance.spend Stop",
+      "mem": 517000,
+      "cpu": 168156000
+    },
+    "instance.close_drained_instance_burns_token": {
+      "label": "service_instance.spend Close",
+      "mem": 219000,
+      "cpu": 72462000
+    }
+  },
+  "transactions": {
+    "onboard_seller": [
+      "root_factory.onboard_seller_locks_state"
+    ],
+    "define_service": [
+      "root_factory.seller_state_bumps_by_one",
+      "seller_factory.define_service_takes_index_from_seller_state"
+    ],
+    "open_instance": [
+      "seller_factory.service_state_counts_instances",
+      "instance.open_instance_succeeds"
+    ],
+    "make_deposit": [
+      "instance.make_deposit_starts_clock_at_lower_bound"
+    ],
+    "withdraw_user": [
+      "instance.withdraw_user_reads_upper_bound"
+    ],
+    "withdraw_provider": [
+      "instance.withdraw_provider_succeeds"
+    ],
+    "stop": [
+      "instance.stop_by_user_reads_upper_bound"
+    ],
+    "close": [
+      "instance.close_drained_instance_burns_token",
+      "instance.burn_instance_mint_succeeds"
+    ]
+  }
+}
