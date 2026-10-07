@@ -32,28 +32,29 @@ To move to a newer fork commit, bump the exact version in `package.json`
 
 ## Config
 
-`CardanoAdapter.init(config)` takes the three applied validators — this package does
-not run `aiken build`/`aiken blueprint apply` itself. Apply parameters in dependency
-order against `bca-token-plutus/plutus.json` (each parameter is CBOR-encoded Plutus
-data, so a 28-byte hash is `581c<hash>`):
+`CardanoAdapter.init(config)` takes the three validators with their parameters
+applied. Generate everything except `chain` and `api` with:
 
 ```sh
-cd bca-token-plutus
-# 1. root_factory(bca_admin)
-aiken blueprint apply -m root_factory -v root_factory -o /tmp/root.json 581c<bca_admin_pkh>
-# 2. seller_factory(root_factory policy id = root_factory hash from step 1)
-aiken blueprint apply -m seller_factory -v seller_factory -o /tmp/seller.json 581c<root_hash>
-# 3. service_instance(token_policy_id, token_asset_name, seller_factory policy id)
-aiken blueprint apply -m instance -v service_instance -o /tmp/i1.json 581c<bca1_policy_id>
-aiken blueprint apply -i /tmp/i1.json -m instance -v service_instance -o /tmp/i2.json <asset_name_cbor>
-aiken blueprint apply -i /tmp/i2.json -m instance -v service_instance -o /tmp/instance.json 581c<seller_factory_hash>
+bca-token-plutus/scripts/apply-params.sh --network preprod \
+  --admin <bca_admin key hash> --token-policy <BCA1 policy id> --token-name <BCA1 asset name hex> \
+  -o cardano-preprod.json
 ```
 
-Each step's hash is the validator's `hash` in its output file. Pass each script's
-`compiledCode` and its bech32 script address (`rootFactory`, `sellerFactory`,
-`instance`); policy ids are read from the addresses. `rootFactory.bcaAdminPkh` is the
-admin key that must sign onboarding, and `instance.tokenPolicyId`/`tokenAssetNameHex`
-identify the BCA1 token.
+```ts
+import { preprod } from "evolution-sdk-bca";
+import config from "./cardano-preprod.json";
+
+const adapter = CardanoAdapter.init({
+  ...config,
+  chain: preprod,
+  api: { baseUrl: "https://staging.blockchain-applied.com/api_preprod/v1", token: process.env.BCA_API_TOKEN },
+});
+```
+
+Policy ids are read from the script addresses. `rootFactory.bcaAdminPkh` is the admin
+key that must sign onboarding; `instance.tokenPolicyId`/`tokenAssetNameHex` identify
+the BCA1 token. See `bca-token-plutus/README.md` for the full preprod walkthrough.
 
 Transactions follow the on-chain rules: instance spends use a validity window of
 5 minutes starting 60 s in the past (on-chain limit 10 minutes), and compute the next

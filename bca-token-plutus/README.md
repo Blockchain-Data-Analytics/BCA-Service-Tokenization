@@ -188,6 +188,53 @@ aiken fmt            # format in place
 aiken fmt --check    # CI mode: fail if anything is unformatted
 ```
 
+## Preprod walkthrough
+
+What you need:
+
+- `aiken` and `jq`;
+- three preprod key pairs, each funded with some tADA from the
+  [testnet faucet](https://docs.cardano.org/cardano-testnets/tools/faucet): BCA admin,
+  seller and user (one key works for a smoke test, but two distinct keys also exercise
+  the signature checks);
+- a native token standing in for BCA1, e.g. minted under a signature-locked native
+  script of the admin key: note its policy id and asset name (hex), and send some to
+  the user;
+- a token for the BCA API (`staging.blockchain-applied.com`).
+
+1. **Apply parameters** (from the repo root; `npm run cardano:config -- …` is the same):
+
+   ```sh
+   bca-token-plutus/scripts/apply-params.sh --network preprod \
+     --admin <admin key hash> --token-policy <policy id> --token-name <asset name hex> \
+     -o cardano-preprod.json
+   ```
+
+   It prints the three script addresses. Nothing needs to be deployed separately: the
+   validators are attached to the transactions that use them.
+
+2. **Create the adapter** from that file (see `packages/chain-adapter-cardano/README.md`)
+   and connect a CIP-30 wallet (`connectWallet()`).
+
+3. **Run the flow**, each step with the wallet named:
+
+   | step | call | wallet |
+   |------|------|--------|
+   | onboard seller | `deploySellerFactory(rootPolicyId, sellerAddress)` → seller ref | admin |
+   | define service | `defineService(sellerRef, { maxInstances, dayPrice })` → service ref | seller |
+   | open instance | `openInstance(serviceRef, userAddress)` → instance ref | anyone |
+   | fund | `deposit(instanceRef, amount)` | anyone holding BCA1 |
+   | withdraw | `withdraw(instanceRef, amount, "client" \| "seller")` | user / seller |
+   | stop | `stop(instanceRef)` | user or seller |
+   | close | `close(instanceRef)` once both sides withdrew | user or seller |
+
+   `rootPolicyId` is the payment-credential hash of the `root_factory` address. Each
+   ref is the unit (policy id + asset name) of a state token.
+
+4. **Check the state** with `getInstanceState(instanceRef)`, or look at the UTxOs at
+   the printed script addresses (each holds exactly one state token and an inline
+   datum) in a preprod explorer or via the BCA API.
+
 ## Updating Aiken
 
 Dependabot does not cover Aiken, so the compiler and stdlib are updated by hand. Watch

@@ -1,5 +1,8 @@
 # Deployment
 
+For the Cardano validators see the
+[preprod walkthrough](../bca-token-plutus/README.md#preprod-walkthrough).
+
 Depending on the target chain, we run for deployment of the contracts:
 
 ## Deploy to local node
