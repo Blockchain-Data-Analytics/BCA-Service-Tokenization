@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@bca/chain-adapter": "*",
+    "@noble/hashes": "^2.4.0",
     "evolution-sdk-bca": "npm:@bca/evolution-sdk@0.5.11-bca.5e26ace"
   },
   "devDependencies": {
