@@ -32,10 +32,10 @@ jobs:
       - name: aiken fmt --check
         run: aiken fmt --check
 
-      - name: aiken check (unit tests)
+      - name: aiken check (unit + property tests)
         run: |
           set -euo pipefail
-          aiken check > /tmp/aiken-check.json
+          aiken check --max-success 1000 > /tmp/aiken-check.json
           jq -r '.modules[] | .name as $m | .tests[] | "\(.status)\t\($m).\(.title)"' /tmp/aiken-check.json
           jq -e '.summary.failed == 0' /tmp/aiken-check.json > /dev/null
 

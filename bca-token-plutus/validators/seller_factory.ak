@@ -214,3 +214,187 @@ test service_state_rejects_past_max_instances() fail {
 test service_state_rejects_counter_reset() fail {
   take_instance_slot(1, 0)
 }
+
+fn define_with(
+  redeemer: DefineService,
+  minted_name: ByteArray,
+  output: Output,
+  signers: List<ByteArray>,
+) -> Bool {
+  seller_factory.mint(
+    root_hash,
+    redeemer,
+    own_hash,
+    Transaction {
+      ..transaction.placeholder,
+      inputs: [seller_input(seller)],
+      mint: assets.from_asset(own_hash, minted_name, 1),
+      outputs: [output],
+      extra_signatories: signers,
+    },
+  )
+}
+
+fn service_name() -> ByteArray {
+  unique_asset_name(seller_ref)
+}
+
+const standard = DefineService { max_instances: 2, day_price: 100 }
+
+test define_service_requires_seller_signature() fail {
+  define_with(
+    standard,
+    service_name(),
+    service_output(service_name(), new_service(7)),
+    [root_hash],
+  )
+}
+
+test define_service_rejects_other_token_name() fail {
+  // minted name differs from the one derived from the seller state
+  define_with(
+    standard,
+    "free",
+    service_output(service_name(), new_service(7)),
+    [seller],
+  )
+}
+
+test define_service_rejects_zero_price() fail {
+  define_with(
+    DefineService { max_instances: 2, day_price: 0 },
+    service_name(),
+    service_output(
+      service_name(),
+      ServiceDatum { ..new_service(7), day_price: 0 },
+    ),
+    [seller],
+  )
+}
+
+test define_service_rejects_zero_max_instances() fail {
+  define_with(
+    DefineService { max_instances: 0, day_price: 100 },
+    service_name(),
+    service_output(
+      service_name(),
+      ServiceDatum { ..new_service(7), max_instances: 0 },
+    ),
+    [seller],
+  )
+}
+
+test define_service_rejects_used_slots() fail {
+  define_with(
+    standard,
+    service_name(),
+    service_output(
+      service_name(),
+      ServiceDatum { ..new_service(7), instance_count: 1 },
+    ),
+    [seller],
+  )
+}
+
+test define_service_rejects_extra_asset_in_service_output() fail {
+  let output = service_output(service_name(), new_service(7))
+  define_with(
+    standard,
+    service_name(),
+    Output { ..output, value: assets.add(output.value, #"cc", "junk", 1) },
+    [seller],
+  )
+}
+
+fn slot_with(inputs: List<Input>, outputs: List<Output>) -> Bool {
+  seller_factory.spend(
+    root_hash,
+    Some(ServiceDatum { ..new_service(7), instance_count: 1 }),
+    Void,
+    own_ref,
+    Transaction { ..transaction.placeholder, inputs, outputs },
+  )
+}
+
+fn service_state_input() -> Input {
+  Input(
+    own_ref,
+    service_output(
+      service_name(),
+      ServiceDatum { ..new_service(7), instance_count: 1 },
+    ),
+  )
+}
+
+fn slot_taken(lovelace: Int) -> Output {
+  let output = service_output(
+    service_name(),
+    ServiceDatum { ..new_service(7), instance_count: 2 },
+  )
+  Output {
+    ..output,
+    value: assets.from_lovelace(lovelace)
+      |> assets.add(own_hash, service_name(), 1),
+  }
+}
+
+test service_state_rejects_lovelace_siphon() fail {
+  slot_with([service_state_input()], [slot_taken(1)])
+}
+
+test service_state_rejects_foreign_token() fail {
+  let output = slot_taken(2)
+  slot_with(
+    [service_state_input()],
+    [Output { ..output, value: assets.add(output.value, #"cc", "junk", 1) }],
+  )
+}
+
+test service_state_rejects_second_own_input() fail {
+  slot_with(
+    [
+      service_state_input(),
+      Input(
+        OutputReference(own_ref.transaction_id, 9),
+        service_state_input().output,
+      ),
+    ],
+    [slot_taken(2)],
+  )
+}
+
+test service_state_rejects_price_change() fail {
+  let output = slot_taken(2)
+  slot_with(
+    [service_state_input()],
+    [
+      Output {
+        ..output,
+        datum: InlineDatum(
+          ServiceDatum { ..new_service(7), instance_count: 2, day_price: 1 },
+        ),
+      },
+    ],
+  )
+}
+
+test service_state_rejects_input_without_token() fail {
+  let junk = Output {
+    ..service_state_input().output,
+    value: assets.from_lovelace(2),
+  }
+  slot_with([Input(own_ref, junk)], [slot_taken(2)])
+}
+
+test service_state_rejects_input_with_extra_asset() fail {
+  let input = service_state_input().output
+  slot_with(
+    [
+      Input(
+        own_ref,
+        Output { ..input, value: assets.add(input.value, #"cc", "junk", 1) },
+      ),
+    ],
+    [slot_taken(2)],
+  )
+}

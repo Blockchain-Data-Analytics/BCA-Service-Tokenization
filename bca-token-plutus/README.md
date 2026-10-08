@@ -85,7 +85,7 @@ Known gaps:
 - Seller onboarding trusts BCA admin not to onboard the same seller twice (EVM checks
   `isDeployed`); token names stay unique regardless.
 - `Close` with a remaining balance needs both parties.
-- Not audited; no property tests yet.
+- Not audited.
 
 ## Setup
 
@@ -139,11 +139,23 @@ whether the scaffold above actually compiles.
 aiken check
 ```
 
-Runs every `test name() { ... }` block in `lib/` and `validators/`: the pure
-functions in `lib/bca/` plus each validator handler called directly against mock
-transactions (happy path and one rejection per rule above).
+Runs every `test` block in `lib/` and `validators/`:
 
-Add a `test name() { ... }` next to any new pure function the same way.
+- **Validator tests** (`validators/*.ak`): each handler called directly with a mock
+  transaction — the happy path of every redeemer and a rejection for every check
+  (missing state token, ADA siphon, foreign token, moved address, batching, signer,
+  validity window, datum tampering, ...).
+- **Unit tests** next to the pure functions in `lib/bca/`.
+- **Property tests** (`lib/bca/properties.ak`, fuzzers from `aiken-lang/fuzz`, a
+  test-only dependency): random sequences of deposits, withdrawals and stops at random
+  times must keep the instance solvent (`balance_user + balance_provider ==
+  deposit - retracted`), move balances only in the right direction over time, never
+  refuse a withdrawal within the available balance and let a stopped instance be
+  drained completely.
+- **Encoding vectors** (`lib/bca/vectors.ak`): the CBOR of every datum and redeemer,
+  pinned; `packages/chain-adapter-cardano` tests decode and re-encode the same bytes.
+
+CI runs `aiken check --max-success 1000` (1000 random cases per property).
 
 Note: `aiken check`/`aiken build` render their diagnostics assuming a TTY. If you run
 them with stdout piped or redirected (e.g. through another tool, or captured into a
@@ -154,15 +166,9 @@ the actual message.
 Useful flags:
 
 ```sh
-aiken check -m types_test           # only tests matching this name/module filter
+aiken check -m bca/properties       # only one module (full module path)
+aiken check --max-success 1000      # more random cases per property (default 100)
 aiken check --trace-level verbose   # full traces on failure (this is already the default)
-```
-
-Property-based tests (`test foo(x via fuzzer) { ... }`) run with a fixed number of
-random cases by default; increase for CI-grade confidence with:
-
-```sh
-aiken check --max-success 1000
 ```
 
 ## Execution budgets
@@ -269,8 +275,7 @@ commit the regenerated `plutus.json` and `aiken.lock`.
 
 ## Next steps
 
-- Property tests for the balance math (`via fuzzer`) and an external audit before
-  any mainnet funds.
+- An external audit before any mainnet funds.
 - `funder.ak`, mirroring `BCA_Funding24`'s at-most-once-per-24h auto-funding.
 - Re-deploy to preprod: the datum layout and validator parameters changed, so
   the first preprod deployment of `service_instance` is incompatible.

@@ -35,7 +35,8 @@ use bca/types.{
 use cardano/address.{Address, Script, VerificationKey}
 use cardano/assets.{AssetName, PolicyId, Value}
 use cardano/transaction.{
-  InlineDatum, Input, Output, OutputReference, Transaction, find_input,
+  DatumHash, InlineDatum, Input, Output, OutputReference, Transaction,
+  find_input,
 }
 
 validator service_instance(
@@ -625,5 +626,330 @@ test open_instance_rejects_prefunded_datum() fail {
       [service_input()],
       ServiceInstanceDatum { ..opened_datum(), deposit: 5 },
     ),
+  )
+}
+
+test open_instance_rejects_other_token_name() fail {
+  // minted name differs from the one derived from the service state
+  let tx = open_tx([service_input()], opened_datum())
+  open(Transaction { ..tx, mint: assets.from_asset(own_hash, "free", 1) })
+}
+
+test open_instance_rejects_second_token() fail {
+  let tx = open_tx([service_input()], opened_datum())
+  open(Transaction { ..tx, mint: assets.add(tx.mint, own_hash, "extra", 1) })
+}
+
+test open_instance_rejects_token_sent_elsewhere() fail {
+  let tx = open_tx([service_input()], opened_datum())
+  expect [output] = tx.outputs
+  open(
+    Transaction {
+      ..tx,
+      outputs: [
+        Output {
+          ..output,
+          address: Address {
+            payment_credential: VerificationKey(user_pkh),
+            stake_credential: None,
+          },
+        },
+      ],
+    },
+  )
+}
+
+test open_instance_rejects_extra_asset_in_instance() fail {
+  let tx = open_tx([service_input()], opened_datum())
+  expect [output] = tx.outputs
+  open(
+    Transaction {
+      ..tx,
+      outputs: [
+        Output { ..output, value: assets.add(output.value, #"cc", "junk", 1) },
+      ],
+    },
+  )
+}
+
+test open_instance_rejects_fake_service_state() fail {
+  // a ServiceDatum at the seller_factory address without its token
+  let Input(ref, output) = service_input()
+  open(
+    open_tx(
+      [Input(ref, Output { ..output, value: assets.from_lovelace(min_ada) })],
+      opened_datum(),
+    ),
+  )
+}
+
+test open_instance_rejects_non_key_hash_user() fail {
+  service_instance.mint(
+    bca1_policy,
+    bca1_name,
+    seller_factory_hash,
+    OpenInstance { user: #"0101" },
+    own_hash,
+    open_tx(
+      [service_input()],
+      ServiceInstanceDatum { ..opened_datum(), user: #"0101" },
+    ),
+  )
+}
+
+// ### Spend: signatures and output shape
+
+const window_lower = one_day
+
+const window_upper = one_day + 60_000
+
+fn withdrawal_by(
+  redeemer: InstanceRedeemer,
+  next: ServiceInstanceDatum,
+  signers: List<ByteArray>,
+) -> Bool {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  spend(
+    current,
+    redeemer,
+    spend_tx(
+      instance_output(current, min_ada),
+      [instance_output(next, min_ada)],
+      window_lower,
+      window_upper,
+      signers,
+    ),
+  )
+}
+
+test withdraw_user_requires_user_signature() fail {
+  withdrawal_by(
+    WithdrawUser(1_000),
+    instance_datum(1_000_000_000 - 1_000, 0, 0),
+    [provider_pkh],
+  )
+}
+
+test withdraw_provider_requires_provider_signature() fail {
+  withdrawal_by(
+    WithdrawProvider(price),
+    instance_datum(1_000_000_000, price, 0),
+    [user_pkh],
+  )
+}
+
+test stop_rejects_third_party() fail {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  withdrawal_by(
+    Stop,
+    ServiceInstanceDatum { ..current, end_time: window_lower },
+    [#"03030303030303030303030303030303030303030303030303030303"],
+  )
+}
+
+test stop_rejects_already_stopped() fail {
+  let current = instance_datum(1_000_000_000, 0, 5_000)
+  spend(
+    current,
+    Stop,
+    spend_tx(
+      instance_output(current, min_ada),
+      [
+        instance_output(
+          ServiceInstanceDatum { ..current, end_time: window_upper },
+          min_ada,
+        ),
+      ],
+      window_lower,
+      window_upper,
+      [user_pkh],
+    ),
+  )
+}
+
+test make_deposit_rejects_after_stop() fail {
+  let current = instance_datum(1_000_000_000, 0, 5_000)
+  spend(
+    current,
+    MakeDeposit(10),
+    spend_tx(
+      instance_output(current, min_ada),
+      [instance_output(instance_datum(1_000_000_010, 0, 5_000), min_ada)],
+      window_lower,
+      window_upper,
+      [user_pkh],
+    ),
+  )
+}
+
+test make_deposit_rejects_tokens_not_added() fail {
+  // datum claims the deposit, output still holds the old BCA1 amount
+  let current = instance_datum(1_000_000_000, 0, 0)
+  let next = instance_datum(1_000_000_010, 0, 0)
+  spend(
+    current,
+    MakeDeposit(10),
+    spend_tx(
+      instance_output(current, min_ada),
+      [
+        Output {
+          ..instance_output(next, min_ada),
+          value: instance_value(min_ada, 1_000_000_000),
+        },
+      ],
+      window_lower,
+      window_upper,
+      [],
+    ),
+  )
+}
+
+test withdraw_provider_rejects_untouched_datum() fail {
+  // tokens leave the instance, but the datum does not record the withdrawal
+  let current = instance_datum(1_000_000_000, 0, 0)
+  spend(
+    current,
+    WithdrawProvider(price),
+    spend_tx(
+      instance_output(current, min_ada),
+      [
+        Output {
+          ..instance_output(current, min_ada),
+          value: instance_value(min_ada, 1_000_000_000 - price),
+        },
+      ],
+      window_lower,
+      window_upper,
+      [provider_pkh],
+    ),
+  )
+}
+
+test spend_rejects_missing_continuing_output() fail {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  spend(
+    current,
+    WithdrawProvider(price),
+    spend_tx(
+      instance_output(current, min_ada),
+      [],
+      window_lower,
+      window_upper,
+      [provider_pkh],
+    ),
+  )
+}
+
+test spend_rejects_split_continuing_output() fail {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  let next = instance_datum(1_000_000_000, price, 0)
+  spend(
+    current,
+    WithdrawProvider(price),
+    spend_tx(
+      instance_output(current, min_ada),
+      [instance_output(next, min_ada), instance_output(next, min_ada)],
+      window_lower,
+      window_upper,
+      [provider_pkh],
+    ),
+  )
+}
+
+test spend_rejects_datum_hash_output() fail {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  let next = instance_datum(1_000_000_000, price, 0)
+  spend(
+    current,
+    WithdrawProvider(price),
+    spend_tx(
+      instance_output(current, min_ada),
+      [Output { ..instance_output(next, min_ada), datum: DatumHash(#"00") }],
+      window_lower,
+      window_upper,
+      [provider_pkh],
+    ),
+  )
+}
+
+test spend_rejects_unbounded_validity() fail {
+  let current = instance_datum(1_000_000_000, 0, 0)
+  let next = instance_datum(1_000_000_000, price, 0)
+  let tx = spend_tx(
+    instance_output(current, min_ada),
+    [instance_output(next, min_ada)],
+    window_lower,
+    window_upper,
+    [provider_pkh],
+  )
+  spend(
+    current,
+    WithdrawProvider(price),
+    Transaction { ..tx, validity_range: interval.after(window_lower) },
+  )
+}
+
+// ### Close
+
+test close_with_balance_by_both_parties() {
+  let current = instance_datum(10, 0, 5_000)
+  spend(
+    current,
+    Close,
+    close_tx(
+      current,
+      [user_pkh, provider_pkh],
+      assets.from_asset(own_hash, instance_token, -1),
+    ),
+  )
+}
+
+test close_with_balance_needs_both_parties() fail {
+  let current = instance_datum(10, 0, 5_000)
+  spend(
+    current,
+    Close,
+    close_tx(
+      current,
+      [user_pkh],
+      assets.from_asset(own_hash, instance_token, -1),
+    ),
+  )
+}
+
+test close_rejects_third_party() fail {
+  let current = instance_datum(10, 10, 5_000)
+  spend(
+    current,
+    Close,
+    close_tx(
+      current,
+      [#"03030303030303030303030303030303030303030303030303030303"],
+      assets.from_asset(own_hash, instance_token, -1),
+    ),
+  )
+}
+
+test close_rejects_output_back_to_script() fail {
+  let current = instance_datum(10, 10, 5_000)
+  let tx = close_tx(
+    current,
+    [user_pkh],
+    assets.from_asset(own_hash, instance_token, -1),
+  )
+  spend(
+    current,
+    Close,
+    Transaction {
+      ..tx,
+      outputs: [
+        Output {
+          address: instance_address(),
+          value: assets.from_lovelace(min_ada),
+          datum: InlineDatum(current),
+          reference_script: None,
+        },
+      ],
+    },
   )
 }

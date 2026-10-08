@@ -9,7 +9,6 @@
 //   seller   root_factory   token = seller key hash             SellerFactoryDatum
 //   service  seller_factory token = name derived from seller UTxO ServiceDatum
 //   instance service_instance token = name derived from service UTxO ServiceInstanceDatum
-import { blake2b } from "@noble/hashes/blake2.js";
 import {
   Address as CardanoAddress,
   Assets as CardanoAssets,
@@ -48,6 +47,24 @@ import type {
   WalletHandle,
 } from "@bca/chain-adapter";
 import { asAddress, asContractRef } from "@bca/chain-adapter";
+import {
+  Redeemer,
+  anyRedeemer,
+  decodeInstanceDatum,
+  decodeSellerState,
+  decodeServiceState,
+  encodeInstanceDatum,
+  encodeSellerState,
+  encodeServiceState,
+  fromHex,
+  hex,
+  nextAfterProviderWithdrawal,
+  nextAfterUserWithdrawal,
+  uniqueAssetName,
+  validityWindow,
+  type InstanceDatumFields,
+  type ServiceState,
+} from "./codec.ts";
 
 type ReadClient = ReturnType<ReturnType<typeof Client.make>["withBlockchainApplied"]>;
 type SigningClient = ReturnType<ReadClient["withCip30"]>;
@@ -74,24 +91,6 @@ export interface CardanoAdapterConfig {
   instance: AppliedScript & { tokenPolicyId: string; tokenAssetNameHex: string };
 }
 
-const DAY_MS = 86_400_000n;
-
-// Validity window used for every instance spend. Must stay within the
-// on-chain `max_validity_ms` (10 min, lib/bca/tx.ak). Bounds are whole
-// seconds: validity intervals are slot-granular and a non-aligned
-// millisecond value drifts in the ms -> slot -> ms round trip, so the
-// on-chain `now` would differ from the one used to build the datum.
-const VALIDITY_LEAD_S = 60; // lower bound this far in the past (clock skew)
-const VALIDITY_SPAN_S = 300;
-
-function validityWindow(): { lower: bigint; upper: bigint } {
-  const lowerS = Math.floor(Date.now() / 1000) - VALIDITY_LEAD_S;
-  return { lower: BigInt(lowerS * 1000), upper: BigInt((lowerS + VALIDITY_SPAN_S) * 1000) };
-}
-
-const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString("hex");
-const fromHex = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "hex"));
-
 function plutusV3Script(compiledCodeHex: string): Script {
   return new PlutusV3.PlutusV3({ bytes: fromHex(compiledCodeHex) }) as Script;
 }
@@ -111,14 +110,8 @@ function keyHashOf(bech32: string): string {
   return hex(hash);
 }
 
-// Mirrors types.ak unique_asset_name: blake2b_224(tx_id ++ u16be(index)).
-function uniqueAssetName(utxo: UTxO): string {
-  const index = Number(utxo.index);
-  const bytes = new Uint8Array(34);
-  bytes.set(TransactionHash.toBytes(utxo.transactionId), 0);
-  bytes[32] = (index >> 8) & 0xff;
-  bytes[33] = index & 0xff;
-  return hex(blake2b(bytes, { dkLen: 28 }));
+function uniqueAssetNameOf(utxo: UTxO): string {
+  return uniqueAssetName(TransactionHash.toBytes(utxo.transactionId), utxo.index);
 }
 
 function inlineDatum(utxo: UTxO): Data.Data {
@@ -127,140 +120,6 @@ function inlineDatum(utxo: UTxO): Data.Data {
     throw new Error(`UTxO ${hex(TransactionHash.toBytes(utxo.transactionId))}#${utxo.index} has no inline datum`);
   }
   return option.data;
-}
-
-function constrFields(data: Data.Data, arity: number, what: string): Data.Data[] {
-  if (!Data.isConstr(data) || data.fields.length !== arity) {
-    throw new Error(`datum is not a ${what}`);
-  }
-  return data.fields as Data.Data[];
-}
-
-// ## Datums (field order mirrors lib/bca/types.ak; all Constr index 0)
-
-interface SellerState {
-  seller: Uint8Array;
-  serviceCount: bigint;
-}
-
-const decodeSellerState = (data: Data.Data): SellerState => {
-  const [seller, serviceCount] = constrFields(data, 2, "SellerFactoryDatum") as [Uint8Array, bigint];
-  return { seller, serviceCount };
-};
-
-const encodeSellerState = (s: SellerState): Data.Data => Data.constr(0n, [s.seller, Data.int(s.serviceCount)]);
-
-interface ServiceState {
-  seller: Uint8Array;
-  serviceIndex: bigint;
-  maxInstances: bigint;
-  dayPrice: bigint;
-  instanceCount: bigint;
-}
-
-const decodeServiceState = (data: Data.Data): ServiceState => {
-  const [seller, serviceIndex, maxInstances, dayPrice, instanceCount] = constrFields(data, 5, "ServiceDatum") as [
-    Uint8Array,
-    bigint,
-    bigint,
-    bigint,
-    bigint,
-  ];
-  return { seller, serviceIndex, maxInstances, dayPrice, instanceCount };
-};
-
-const encodeServiceState = (s: ServiceState): Data.Data =>
-  Data.constr(0n, [
-    s.seller,
-    Data.int(s.serviceIndex),
-    Data.int(s.maxInstances),
-    Data.int(s.dayPrice),
-    Data.int(s.instanceCount),
-  ]);
-
-interface InstanceDatumFields {
-  dayPrice: bigint;
-  deposit: bigint;
-  retracted: bigint;
-  startTime: bigint;
-  endTime: bigint;
-  user: Uint8Array;
-  provider: Uint8Array;
-  service: Uint8Array;
-}
-
-function decodeInstanceDatum(data: Data.Data): InstanceDatumFields {
-  const [dayPrice, deposit, retracted, startTime, endTime, user, provider, service] = constrFields(
-    data,
-    8,
-    "ServiceInstanceDatum",
-  ) as [bigint, bigint, bigint, bigint, bigint, Uint8Array, Uint8Array, Uint8Array];
-  return { dayPrice, deposit, retracted, startTime, endTime, user, provider, service };
-}
-
-function encodeInstanceDatum(f: InstanceDatumFields): Data.Data {
-  return Data.constr(0n, [
-    Data.int(f.dayPrice),
-    Data.int(f.deposit),
-    Data.int(f.retracted),
-    Data.int(f.startTime),
-    Data.int(f.endTime),
-    f.user,
-    f.provider,
-    f.service,
-  ]);
-}
-
-// ## Redeemers (constructor indices mirror lib/bca/types.ak)
-
-const anyRedeemer = Data.constr(0n, []);
-const Redeemer = {
-  onboardSeller: (seller: string) => Data.constr(0n, [Data.bytearray(seller)]),
-  defineService: (p: ServiceParams) => Data.constr(0n, [Data.int(BigInt(p.maxInstances)), Data.int(p.dayPrice)]),
-  openInstance: (user: string) => Data.constr(0n, [Data.bytearray(user)]),
-  burnInstance: Data.constr(1n, []),
-  makeDeposit: (amount: bigint) => Data.constr(0n, [Data.int(amount)]),
-  withdrawUser: (amount: bigint) => Data.constr(1n, [Data.int(amount)]),
-  withdrawProvider: (amount: bigint) => Data.constr(2n, [Data.int(amount)]),
-  stop: Data.constr(3n, []),
-  close: Data.constr(4n, []),
-};
-
-// ## Instance state machine, mirrors lib/bca/instance.ak (next_datum)
-
-function balanceUser(d: InstanceDatumFields, now: bigint): bigint {
-  const calcTime = d.endTime !== 0n ? d.endTime : now;
-  const paid = ((calcTime - d.startTime) * d.dayPrice) / DAY_MS;
-  return paid >= d.deposit ? 0n : d.deposit - paid;
-}
-
-function balanceProvider(d: InstanceDatumFields, now: bigint): bigint {
-  const calcTime = d.endTime !== 0n ? d.endTime : now;
-  const earned = ((calcTime - d.startTime) * d.dayPrice) / DAY_MS;
-  const capped = earned > d.deposit ? d.deposit : earned;
-  return capped > d.retracted ? capped - d.retracted : 0n;
-}
-
-// is_dust + end_time_after_withdrawal: leaving at most one second's worth stops a running instance.
-function endTimeAfterWithdrawal(d: InstanceDatumFields, remaining: bigint, now: bigint): bigint {
-  return d.endTime === 0n && remaining <= d.dayPrice / 86_400n ? now : d.endTime;
-}
-
-function nextAfterUserWithdrawal(d: InstanceDatumFields, amount: bigint, now: bigint): InstanceDatumFields {
-  const avail = balanceUser(d, now);
-  if (d.startTime === 0n || amount <= 0n || amount > avail) {
-    throw new Error(`withdraw: amount ${amount} exceeds user balance ${avail}`);
-  }
-  return { ...d, deposit: d.deposit - amount, endTime: endTimeAfterWithdrawal(d, avail - amount, now) };
-}
-
-function nextAfterProviderWithdrawal(d: InstanceDatumFields, amount: bigint, now: bigint): InstanceDatumFields {
-  const avail = balanceProvider(d, now);
-  if (d.startTime === 0n || amount <= 0n || amount > avail) {
-    throw new Error(`withdraw: amount ${amount} exceeds provider balance ${avail}`);
-  }
-  const remaining = d.deposit - d.retracted - amount;
-  return { ...d, retracted: d.retracted + amount, endTime: endTimeAfterWithdrawal(d, remaining, now) };
 }
 
 export class CardanoAdapter implements ChainAdapter {
@@ -391,7 +250,7 @@ export class CardanoAdapter implements ChainAdapter {
     const sellerUnit = this.requireUnitOf(sellerFactory, this.policy.root, "sellerFactory");
     const sellerUtxo = await this.findState(this.config.rootFactory.scriptAddress, sellerUnit);
     const seller = decodeSellerState(inlineDatum(sellerUtxo));
-    const serviceUnit = this.policy.seller + uniqueAssetName(sellerUtxo);
+    const serviceUnit = this.policy.seller + uniqueAssetNameOf(sellerUtxo);
     const service: ServiceState = {
       seller: seller.seller,
       serviceIndex: seller.serviceCount,
@@ -434,7 +293,7 @@ export class CardanoAdapter implements ChainAdapter {
       throw new Error(`service ${serviceUnit} has no free instance slot (max ${service.maxInstances})`);
     }
     const userPkh = keyHashOf(clientAddress);
-    const instanceUnit = this.policy.instance + uniqueAssetName(serviceUtxo);
+    const instanceUnit = this.policy.instance + uniqueAssetNameOf(serviceUtxo);
     const opened: InstanceDatumFields = {
       dayPrice: service.dayPrice,
       deposit: 0n,

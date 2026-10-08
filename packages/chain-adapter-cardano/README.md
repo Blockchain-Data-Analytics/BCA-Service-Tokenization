@@ -60,6 +60,19 @@ Transactions follow the on-chain rules: instance spends use a validity window of
 5 minutes starting 60 s in the past (on-chain limit 10 minutes), and compute the next
 datum with the same bound the validator reads for that action.
 
+## Tests
+
+```sh
+npm test   # from the repo root or this package
+```
+
+`test/codec.test.ts` (Node's built-in test runner, run on the TypeScript sources
+directly) checks that the datum and redeemer encoding in `src/codec.ts` is
+byte-identical to the Aiken types (vectors pinned in
+`bca-token-plutus/lib/bca/vectors.ak`), that token names are derived like
+`unique_asset_name`, and that the off-chain instance state machine matches
+`next_datum` on the same scenarios as the Aiken tests.
+
 ## Known limitations
 
 - `deploySellerFactory` needs the connected wallet to be the BCA admin,

@@ -14,8 +14,8 @@ use aiken/collection/dict
 use aiken/collection/list
 use bca/tx.{continues_with, inputs_at, outputs_at}
 use bca/types.{OnboardSeller, SellerFactoryDatum}
-use cardano/address.{Address, Script}
-use cardano/assets.{PolicyId}
+use cardano/address.{Address, Script, VerificationKey}
+use cardano/assets.{PolicyId, Value}
 use cardano/transaction.{
   InlineDatum, Input, Output, OutputReference, Transaction, find_input,
 }
@@ -172,4 +172,143 @@ test seller_state_rejects_reused_index() fail {
 
 test seller_state_requires_seller() fail {
   bump(SellerFactoryDatum { seller, service_count: 5 }, [admin])
+}
+
+fn onboard_with(
+  minted: Value,
+  redeemer_seller: ByteArray,
+  outputs: List<Output>,
+) -> Bool {
+  root_factory.mint(
+    admin,
+    OnboardSeller { seller: redeemer_seller },
+    own_hash,
+    Transaction {
+      ..transaction.placeholder,
+      mint: minted,
+      outputs,
+      extra_signatories: [admin],
+    },
+  )
+}
+
+const other = #"09090909090909090909090909090909090909090909090909090909"
+
+fn fresh_state() -> Output {
+  state_output(SellerFactoryDatum { seller, service_count: 0 }, 2)
+}
+
+test onboard_seller_rejects_token_named_otherwise() fail {
+  onboard_with(assets.from_asset(own_hash, other, 1), seller, [fresh_state()])
+}
+
+test onboard_seller_rejects_second_token() fail {
+  onboard_with(
+    assets.from_asset(own_hash, seller, 1) |> assets.add(own_hash, other, 1),
+    seller,
+    [fresh_state()],
+  )
+}
+
+test onboard_seller_rejects_non_key_hash() fail {
+  let short = #"0202"
+  onboard_with(
+    assets.from_asset(own_hash, short, 1),
+    short,
+    [state_output(SellerFactoryDatum { seller: short, service_count: 0 }, 2)],
+  )
+}
+
+test onboard_seller_rejects_extra_asset_in_state() fail {
+  let output = fresh_state()
+  onboard_with(
+    assets.from_asset(own_hash, seller, 1),
+    seller,
+    [Output { ..output, value: assets.add(output.value, #"cc", "junk", 1) }],
+  )
+}
+
+fn spend_with(inputs: List<Input>, outputs: List<Output>) -> Bool {
+  root_factory.spend(
+    admin,
+    Some(SellerFactoryDatum { seller, service_count: 4 }),
+    Void,
+    own_ref,
+    Transaction {
+      ..transaction.placeholder,
+      inputs,
+      outputs,
+      extra_signatories: [seller],
+    },
+  )
+}
+
+fn current_input() -> Input {
+  Input(
+    own_ref,
+    state_output(SellerFactoryDatum { seller, service_count: 4 }, 2),
+  )
+}
+
+fn bumped() -> Output {
+  state_output(SellerFactoryDatum { seller, service_count: 5 }, 2)
+}
+
+test seller_state_rejects_lovelace_siphon() fail {
+  spend_with(
+    [current_input()],
+    [state_output(SellerFactoryDatum { seller, service_count: 5 }, 1)],
+  )
+}
+
+test seller_state_rejects_foreign_token() fail {
+  let output = bumped()
+  spend_with(
+    [current_input()],
+    [Output { ..output, value: assets.add(output.value, #"cc", "junk", 1) }],
+  )
+}
+
+test seller_state_rejects_moved_stake_credential() fail {
+  spend_with(
+    [current_input()],
+    [
+      Output {
+        ..bumped(),
+        address: Address {
+          payment_credential: Script(own_hash),
+          stake_credential: Some(address.Inline(VerificationKey(seller))),
+        },
+      },
+    ],
+  )
+}
+
+test seller_state_rejects_second_own_input() fail {
+  spend_with(
+    [
+      current_input(),
+      Input(OutputReference(own_ref.transaction_id, 9), current_input().output),
+    ],
+    [bumped()],
+  )
+}
+
+test seller_state_rejects_input_without_token() fail {
+  // a SellerFactoryDatum someone locked here without the root_factory token
+  let junk = Output { ..current_input().output, value: assets.from_lovelace(2) }
+  spend_with([Input(own_ref, junk)], [bumped()])
+}
+
+test seller_state_rejects_input_with_extra_asset() fail {
+  let input = current_input().output
+  spend_with(
+    [
+      Input(
+        own_ref,
+        Output { ..input, value: assets.add(input.value, #"cc", "junk", 1) },
+      ),
+    ],
+    [bumped()],
+  )
 }

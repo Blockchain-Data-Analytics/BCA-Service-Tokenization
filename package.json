@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "check": "npm run check --workspaces --if-present",
-    "cardano:config": "bca-token-plutus/scripts/apply-params.sh"
+    "cardano:config": "bca-token-plutus/scripts/apply-params.sh",
+    "test": "npm run test --workspaces --if-present"
   }
 }
