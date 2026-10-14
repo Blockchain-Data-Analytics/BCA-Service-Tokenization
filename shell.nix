@@ -13,17 +13,12 @@ stdenv.mkDerivation rec {
         autoconf automake libtool
         cmake gcc
         gnupg
-        pgadmin
-        nodejs_20
-        vscodium
-        jdk
-        graphviz
-        #thrift
-        python312
-        python312Packages.mypy
-        python312Packages.thriftpy2
-        python312Packages.psycopg2
-        python312Packages.types-psycopg2
+        nodejs_22
+        #python312
+        #python312Packages.mypy
+        #python312Packages.thriftpy2
+        #python312Packages.psycopg2
+        #python312Packages.types-psycopg2
     ];
 
     buildInputs = [
@@ -34,7 +29,9 @@ stdenv.mkDerivation rec {
     shellHook = ''
       echo 'nixified environment'
       export SED=sed
+      if [ `uname -s` = "Darwin" ]; then
+          export SED=gsed
+      fi
     '';
 
 }
-
