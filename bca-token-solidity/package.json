@@ -8,7 +8,7 @@
 		"hardhat": "^2.22.16",
 		"mocha": "^10.8.2",
 		"solidity-coverage": "^0.8.13",
-		"typescript": "~5.9.3"
+		"typescript": "~7.0.2"
 	},
 	"dependencies": {
 		"@openzeppelin/contracts": "^5.1.0",
