@@ -21,7 +21,7 @@ without tag), and tags it with `docker/ci-cardano.version` (plus `latest`):
 
 | platform | `CI_IMAGE` | image built by |
 |---|---|---|
-| GitHub | `ghcr.io/blockchain-data-analytics/ci-cardano` | `ci-image.yaml`, on demand from the CI workflows |
+| GitHub | `ghcr.io/blockchain-data-analytics/ci-cardano` | `build-ci-cardano-image.yaml`, on demand from the CI workflows |
 | Forgejo | `code.blockchain-applied.com/bca/ci-cardano` | `build-ci-cardano-image.yaml` (on `main` or manually) |
 
 The TypeScript job also needs a secret with a Forgejo token (`read:package`) for the

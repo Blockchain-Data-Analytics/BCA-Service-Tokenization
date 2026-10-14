@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   image:
-    uses: ./.github/workflows/ci-image.yaml
+    uses: ./.github/workflows/build-ci-cardano-image.yaml
 
   aiken:
     name: aiken fmt / check / budgets / build

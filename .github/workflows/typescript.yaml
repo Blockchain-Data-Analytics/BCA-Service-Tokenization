@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   image:
-    uses: ./.github/workflows/ci-image.yaml
+    uses: ./.github/workflows/build-ci-cardano-image.yaml
 
   check:
     name: npm ci / check / test / audit
