@@ -1,11 +1,35 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
+# Dependabot version updates, see
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Aiken (compiler + stdlib) is not a Dependabot ecosystem; it is updated by hand,
+# see bca-token-plutus/README.md "Updating Aiken".
 
 version: 2
+
+registries:
+  # @bca/evolution-sdk (the Evolution SDK fork) is published here; the root
+  # workspace lockfile cannot be resolved without it. BCA_NPM_TOKEN is a
+  # Dependabot secret holding a Forgejo token with read:package.
+  bca-forgejo-npm:
+    type: npm-registry
+    url: https://code.blockchain-applied.com/api/packages/BCA/npm/
+    token: ${{secrets.BCA_NPM_TOKEN}}
+
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/bca-token-solidity" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/bca-token-solidity"
     schedule:
       interval: "weekly"
+
+  # Root npm workspace: packages/chain-adapter, chain-adapter-evm, chain-adapter-cardano.
+  - package-ecosystem: "npm"
+    directory: "/"
+    registries:
+      - bca-forgejo-npm
+    schedule:
+      interval: "weekly"
+    ignore:
+      # Pinned to a fork commit (<upstream>-bca.<sha7>); bumped by hand together
+      # with the fork, see packages/chain-adapter-cardano/README.md.
+      - dependency-name: "evolution-sdk-bca"
+      - dependency-name: "@bca/evolution-sdk"

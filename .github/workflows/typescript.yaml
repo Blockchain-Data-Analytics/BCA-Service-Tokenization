@@ -1,0 +1,32 @@
+name: TypeScript packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    uses: ./.github/workflows/build-ci-cardano-image.yaml
+
+  check:
+    name: npm ci / check / test / audit
+    needs: image
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: TypeScript CI
+        env:
+          # Forgejo token with read:package for @bca/evolution-sdk (see .npmrc)
+          NPM_TOKEN: ${{ secrets.BCA_NPM_TOKEN }}
+        run: ci/typescript.sh

@@ -1,0 +1,14 @@
+{
+  "name": "bca-service-tokenization",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Workspace root for the shared TS packages in packages/. The apps (bca-token-market, bca-token-app, bca-token-solidity, bca-token-db, bca-market-services) keep their own toolchains and are not part of this workspace.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "npm run check --workspaces --if-present",
+    "cardano:config": "bca-token-plutus/scripts/apply-params.sh",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

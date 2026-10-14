@@ -3,7 +3,6 @@ out
 
 node_modules
 */node_modules
-*/package-lock.json
 
 */prisma/migrations
 
@@ -15,3 +14,5 @@ node_modules
 */README.local*
 
 .DS_Store
+
+bca-token-market/node_modules.txt*

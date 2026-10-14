@@ -1,0 +1,6 @@
+# Aiken compilation artifacts
+artifacts/
+# Aiken's project working directory (dependency cache, build metadata)
+build/
+# Aiken's default documentation export
+docs/

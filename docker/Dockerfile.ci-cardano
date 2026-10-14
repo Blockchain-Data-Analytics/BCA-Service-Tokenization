@@ -1,0 +1,34 @@
+FROM node:22-bookworm-slim
+
+# Links the ghcr.io package to the GitHub repository (and its Actions access).
+LABEL org.opencontainers.image.source="https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization"
+LABEL org.opencontainers.image.description="BCA CI image: Node 22, pnpm, Aiken (checksum-verified)"
+
+ARG AIKEN_VERSION=v1.1.23
+ARG AIKEN_SHA256_AMD64=b98c4ccbada5e35f15ba417a52872aeaf0c65998aed77351769ce5fd2506b570
+ARG AIKEN_SHA256_ARM64=72a40b4e1b8e2219c4d655590d6a6e868d858386db780a36971bd3aaf4d89290
+ARG PNPM_VERSION=9.0.0
+ARG TARGETARCH
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git jq && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eu; \
+    case "${TARGETARCH}" in \
+      amd64) triple=x86_64-unknown-linux-musl;  sha="${AIKEN_SHA256_AMD64}" ;; \
+      arm64) triple=aarch64-unknown-linux-musl; sha="${AIKEN_SHA256_ARM64}" ;; \
+      *) echo "unsupported arch: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL -o /tmp/aiken.tar.gz \
+      "https://github.com/aiken-lang/aiken/releases/download/${AIKEN_VERSION}/aiken-${triple}.tar.gz"; \
+    echo "${sha}  /tmp/aiken.tar.gz" | sha256sum -c -; \
+    tar xzf /tmp/aiken.tar.gz -C /tmp; \
+    install -m 0755 "/tmp/aiken-${triple}/aiken" /usr/local/bin/aiken; \
+    rm -rf /tmp/aiken*; \
+    aiken --version
+
+# Pre-fetch pnpm so CI jobs building the Evolution SDK fork don't download it each run.
+RUN corepack enable && corepack prepare "pnpm@${PNPM_VERSION}" --activate && pnpm --version
+
+WORKDIR /work

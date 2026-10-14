@@ -112,15 +112,17 @@ contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
 
         uint256 calcTime = endTime != 0 ? endTime : block.timestamp;
         uint256 ticks = calcTime - startTime;
-        uint256 balance = 0;
-        uint256 bal1 = ticks * dayPrice / 24 / 3600;
-        // cap the available balance
-        if (bal1 > deposit - retracted) {
-            balance = deposit - retracted;
-        } else {
-            balance = bal1;
+        uint256 earned = ticks * dayPrice / 24 / 3600;
+        // never more than was deposited, minus what was already withdrawn
+        if (earned > deposit) {
+            earned = deposit;
         }
-        return balance;
+        return earned > retracted ? earned - retracted : 0;
+    }
+
+    // remaining funds worth at most one second of service
+    function _isDust(uint256 remaining) private view returns (bool) {
+        return remaining <= dayPrice / 24 / 3600;
     }
 
     function withdrawUser(uint256 amount) external nonReentrant {
@@ -141,8 +143,8 @@ contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
             revert("transfer failed");
         }
 
-        // stop service?
-        if (balance - amount <= dayPrice / 24 / 3600) {
+        // stop service once the user's funds are used up (unless already stopped)
+        if (endTime == 0 && _isDust(balance - amount)) {
             _stop(msg.sender);
         }
     }
@@ -157,8 +159,8 @@ contract BCAServiceInstance is IServiceInstance, ReentrancyGuard {
             revert InsufficientBalance(balance);
         }
 
-        // stop service?
-        if (deposit - retracted - amount < dayPrice / 24 / 3600) {
+        // stop service once the contract is drained (unless already stopped)
+        if (endTime == 0 && _isDust(deposit - retracted - amount)) {
            _stop(msg.sender);
         }
 

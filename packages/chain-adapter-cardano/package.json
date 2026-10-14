@@ -1,0 +1,23 @@
+{
+  "name": "@bca/chain-adapter-cardano",
+  "version": "0.0.1",
+  "private": true,
+  "description": "ChainAdapter implementation over the BCA Evolution SDK fork for the Aiken validators in bca-token-plutus (root_factory, seller_factory, service_instance).",
+  "license": "GPL-3.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "node --test 'test/**/*.test.ts'"
+  },
+  "dependencies": {
+    "@bca/chain-adapter": "*",
+    "@noble/hashes": "^2.4.0",
+    "evolution-sdk-bca": "npm:@bca/evolution-sdk@0.5.11-bca.5e26ace"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^5.6.3"
+  }
+}

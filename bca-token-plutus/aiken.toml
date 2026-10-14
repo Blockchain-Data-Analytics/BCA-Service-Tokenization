@@ -1,0 +1,23 @@
+name = "bca/cardano-contracts"
+version = "0.0.1"
+compiler = "v1.1.23"
+license = "GPL-3.0"
+description = "BCA Market for Tokenized Services: Cardano validators for pay-as-you-go service instances"
+
+[repository]
+user = "Blockchain-Data-Analytics"
+project = "BCA-Service-Tokenization"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "v2.1.0"
+source = "github"
+
+# Test-only: fuzzers for property tests (`test x(y via fuzzer)`).
+[[dependencies]]
+name = "aiken-lang/fuzz"
+version = "v2.1.1"
+source = "github"
+
+[config.default]

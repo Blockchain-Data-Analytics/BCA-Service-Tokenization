@@ -1,0 +1,75 @@
+name: Build ci-cardano image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker/Dockerfile.ci-cardano"
+      - "docker/ci-cardano.version"
+      - ".forgejo/workflows/build-ci-cardano-image.yaml"
+  workflow_dispatch:
+
+jobs:
+  build-ci-cardano:
+    name: build-ci-cardano
+    runs-on: nixos-amd64
+    env:
+      # Forgejo variable: image name without tag (the tag is docker/ci-cardano.version)
+      IMAGE: ${{ vars.CI_IMAGE }}
+    container:
+      image: code.blockchain-applied.com/bca/nixos:1.0.0
+      options: >-
+        --privileged
+        --security-opt seccomp=unconfined
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+      env:
+        DOCKER_HOST: tcp://localhost:2375
+        DOCKER_TLS_CERTDIR: ""
+
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Docker login
+        shell: nix-shell --run "bash {0}"
+        env:
+          DOCKER_USERNAME: "ci_bca"
+          DOCKER_PASSWORD: ${{ secrets.PAT }}
+        run: |
+          if [ -z "${IMAGE}" ]; then echo "::error::Actions variable CI_IMAGE (image name without tag) is not set"; exit 1; fi
+          echo "${DOCKER_PASSWORD}" | docker login "${IMAGE%%/*}" --username "${DOCKER_USERNAME}" --password-stdin
+          docker version || echo "🚨 Cannot connect to Docker daemon"
+
+      - name: Set up Docker Buildx
+        shell: nix-shell --run "{0}"
+        run: docker buildx create --name multiarch-builder --driver docker-container --use && docker buildx inspect --bootstrap
+
+      # Bump docker/ci-cardano.version when the Aiken/Node/pnpm pins in the
+      # Dockerfile change; CI workflows reference the image by this tag.
+      - name: 🐳 Build and push ci-cardano image (amd64 + arm64)
+        shell: nix-shell --run "{0}"
+        run: |
+          VERSION="$(cat docker/ci-cardano.version)"
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag ${IMAGE}:${VERSION}-amd64 \
+            --file docker/Dockerfile.ci-cardano \
+            --push \
+            .
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag ${IMAGE}:${VERSION}-arm64 \
+            --file docker/Dockerfile.ci-cardano \
+            --push \
+            .
+          docker buildx imagetools create \
+            --tag ${IMAGE}:${VERSION} \
+            --tag ${IMAGE}:latest \
+            --tag ${IMAGE}:${{ forgejo.sha }} \
+            ${IMAGE}:${VERSION}-arm64 \
+            ${IMAGE}:${VERSION}-amd64
+          docker buildx imagetools inspect ${IMAGE}:${VERSION}

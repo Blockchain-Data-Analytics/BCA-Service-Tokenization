@@ -1,0 +1,57 @@
+name: TypeScript packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  image:
+    name: resolve CI image
+    runs-on: nixos-amd64
+    container:
+      image: code.blockchain-applied.com/bca/nixos:1.0.0
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      # CI_IMAGE: Forgejo variable with the image name without tag; the tag is
+      # the version this commit declares in docker/ci-cardano.version.
+      - id: ref
+        env:
+          CI_IMAGE: ${{ vars.CI_IMAGE }}
+        run: |
+          if [ -z "$CI_IMAGE" ]; then
+            echo "::error::Actions variable CI_IMAGE (image name without tag) is not set"
+            exit 1
+          fi
+          echo "image=${CI_IMAGE}:$(cat docker/ci-cardano.version)" >> "$GITHUB_OUTPUT"
+          echo "CI image: ${CI_IMAGE}:$(cat docker/ci-cardano.version)"
+
+  check:
+    name: npm ci / check / test / audit
+    needs: image
+    runs-on: nixos-amd64
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: TypeScript CI
+        env:
+          NPM_TOKEN: ${{ secrets.PAT }}
+        run: ci/typescript.sh

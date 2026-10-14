@@ -143,13 +143,14 @@ The contract has public methods:
 - `function stop() external nonReentrant`
     * both parties may call stop() at any time
 - `function balanceUser() public view returns (uint256)`
-    * calculates the user's balance
+    * calculates the user's balance: `deposit - paid`, where `paid` is the elapsed time (until `endTime` once stopped) × `dayPrice`
 - `function balanceProvider() public view returns (uint256)`
-    * calculates the provider's balance
+    * calculates the provider's balance: `min(paid, deposit) - retracted`; together with the user's balance this equals the contract's token holdings
 - `function withdrawUser(uint256 amount) external nonReentrant`
     * the user may withdraw from his balance; this will affect the deposit
 - `function withdrawProvider(uint256 amount) external nonReentrant`
     * the provider may withdraw up to his calculated balance
+- a withdrawal leaving at most one second's worth of service (`dayPrice / 24 / 3600`) stops a running contract; after `stop()` both parties can still withdraw their full balances
 
 
 ## Contract: BCAServiceFunding24
