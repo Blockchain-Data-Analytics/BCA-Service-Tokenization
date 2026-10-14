@@ -4,7 +4,7 @@
 	"private": true,
 	"devDependencies": {
 		"@nomicfoundation/hardhat-ignition-ethers": "^0.15.7",
-		"@nomicfoundation/hardhat-toolbox": "^5.0.0",
+		"@nomicfoundation/hardhat-toolbox": "^7.0.0",
 		"hardhat": "^2.22.16",
 		"mocha": "^10.8.2",
 		"solidity-coverage": "^0.8.13",
