@@ -1,0 +1,85 @@
+name: CI image
+
+# Builds docker/Dockerfile.ci-cardano for amd64 + arm64 and pushes it to
+# <vars.CI_IMAGE>:<docker/ci-cardano.version> (and :latest), unless that
+# version tag already exists. CI_IMAGE is the repository variable with the
+# image name without tag, e.g. ghcr.io/blockchain-data-analytics/ci-cardano.
+# Called by the CI workflows, which run inside the image.
+
+on:
+  workflow_call:
+    outputs:
+      image:
+        description: Image reference the CI jobs run in
+        value: ${{ jobs.image.outputs.image }}
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Rebuild and overwrite the tag even if it exists
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    # The Aiken and TypeScript workflows both call this; the second waits and
+    # then finds the tag already published.
+    concurrency:
+      group: ci-cardano-image
+      cancel-in-progress: false
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: ref
+        env:
+          CI_IMAGE: ${{ vars.CI_IMAGE }}
+        run: |
+          if [[ -z "$CI_IMAGE" ]]; then
+            echo "::error::repository variable CI_IMAGE (image name without tag) is not set"
+            exit 1
+          fi
+          echo "name=${CI_IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "image=${CI_IMAGE}:$(cat docker/ci-cardano.version)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: exists
+        env:
+          IMAGE: ${{ steps.ref.outputs.image }}
+          REBUILD: ${{ inputs.rebuild || false }}
+        run: |
+          if [[ "$REBUILD" != "true" ]] && docker manifest inspect "$IMAGE" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "$IMAGE already published"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.exists.outputs.exists == 'false'
+        uses: docker/setup-qemu-action@v3
+
+      - if: steps.exists.outputs.exists == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - if: steps.exists.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ci-cardano
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.ref.outputs.image }}
+            ${{ steps.ref.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -262,10 +262,12 @@ hash, address and policy id: treat it as a new deployment, not an in-place upgra
      | jq -r '.assets[] | select(.name | test("unknown-linux-musl.tar.gz$")) | "\(.name) \(.digest)"'
    ```
 
-3. The CI image tag: bump `VERSION` in `.forgejo/workflows/build-ci-cardano-image.yaml`,
-   let that workflow publish the image, then bump `ci-cardano:<version>` in
-   `.forgejo/workflows/aiken.yaml` and `typescript.yaml` (and in the Evolution SDK
-   fork's `publish-bca-npm.yaml`).
+3. The CI image tag: bump `docker/ci-cardano.version` in the same change. CI runs in
+   `<CI_IMAGE>:<that version>`, so each commit uses the toolchain it declares.
+   - GitHub builds and pushes the new tag on the next CI run.
+   - On Forgejo, run "Build ci-cardano image" on the branch (workflow_dispatch) before
+     its CI, since the new tag doesn't exist yet.
+   - The `CI_IMAGE` variable itself never changes (see the top-level README).
 
 **stdlib** — change `version` under `[[dependencies]]` in `aiken.toml`, then run
 `aiken check` (re-fetches it and updates `aiken.lock`).

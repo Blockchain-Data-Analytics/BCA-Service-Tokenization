@@ -14,3 +14,5 @@ node_modules
 */README.local*
 
 .DS_Store
+
+bca-token-market/node_modules.txt*

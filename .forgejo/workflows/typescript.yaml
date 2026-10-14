@@ -7,53 +7,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
-    name: npm ci / check / audit
+  image:
+    name: resolve CI image
     runs-on: nixos-amd64
     container:
-      image: code.blockchain-applied.com/bca/ci-cardano:1.0.0
+      image: code.blockchain-applied.com/bca/nixos:1.0.0
       credentials:
         username: ci_bca
         password: ${{ secrets.PAT }}
-    defaults:
-      run:
-        shell: bash
-
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
     steps:
       - name: Check out repository code
         uses: https://data.forgejo.org/actions/checkout@v4
         with:
           submodules: false
 
-      # @bca/evolution-sdk comes from the BCA Forgejo npm registry (scope
-      # mapping in .npmrc); only the token is injected here.
-      - name: Configure registry auth
+      # CI_IMAGE: Forgejo variable with the image name without tag; the tag is
+      # the version this commit declares in docker/ci-cardano.version.
+      - id: ref
         env:
-          NPM_TOKEN: ${{ secrets.PAT }}
-        run: npm config set "//code.blockchain-applied.com/api/packages/BCA/npm/:_authToken" "${NPM_TOKEN}"
-
-      # Every non-workspace package must come from a registry tarball with an
-      # integrity hash: git dependencies fail in CI and pin nothing reproducible.
-      - name: lockfile sources are pinned registry tarballs
+          CI_IMAGE: ${{ vars.CI_IMAGE }}
         run: |
-          jq -r '.packages | to_entries[]
-            | select(.key != "" and (.value.link | not) and (.key | startswith("packages/") and (contains("/node_modules/") | not) | not))
-            | select((.value.resolved // "" | startswith("https://") | not) or (.value.integrity | not))
-            | "\(.key)\t\(.value.resolved // "-")"' package-lock.json > /tmp/unpinned.txt
-          if [ -s /tmp/unpinned.txt ]; then
-            echo "::error::package-lock.json has dependencies without a registry tarball + integrity:"
-            cat /tmp/unpinned.txt
+          if [ -z "$CI_IMAGE" ]; then
+            echo "::error::Actions variable CI_IMAGE (image name without tag) is not set"
             exit 1
           fi
+          echo "image=${CI_IMAGE}:$(cat docker/ci-cardano.version)" >> "$GITHUB_OUTPUT"
+          echo "CI image: ${CI_IMAGE}:$(cat docker/ci-cardano.version)"
 
-      - name: npm ci
-        run: npm ci --no-fund
+  check:
+    name: npm ci / check / test / audit
+    needs: image
+    runs-on: nixos-amd64
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
 
-      - name: type-check workspaces (tsc --noEmit)
-        run: npm run check
-
-      - name: unit tests
-        run: npm test
-
-      - name: npm audit (root workspace)
-        run: npm audit --audit-level=moderate
+      - name: TypeScript CI
+        env:
+          NPM_TOKEN: ${{ secrets.PAT }}
+        run: ci/typescript.sh

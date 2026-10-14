@@ -7,53 +7,49 @@ on:
   workflow_dispatch:
 
 jobs:
-  aiken:
-    name: aiken fmt / check / build
+  image:
+    name: resolve CI image
     runs-on: nixos-amd64
     container:
-      image: code.blockchain-applied.com/bca/ci-cardano:1.0.0
+      image: code.blockchain-applied.com/bca/nixos:1.0.0
       credentials:
         username: ci_bca
         password: ${{ secrets.PAT }}
-    defaults:
-      run:
-        shell: bash
-        working-directory: bca-token-plutus
-
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
     steps:
       - name: Check out repository code
         uses: https://data.forgejo.org/actions/checkout@v4
         with:
           submodules: false
 
-      - name: aiken version
-        run: aiken --version
-
-      - name: aiken fmt --check
-        run: aiken fmt --check
-
-      - name: aiken check (unit + property tests)
+      # CI_IMAGE: Forgejo variable with the image name without tag; the tag is
+      # the version this commit declares in docker/ci-cardano.version.
+      - id: ref
+        env:
+          CI_IMAGE: ${{ vars.CI_IMAGE }}
         run: |
-          set -euo pipefail
-          aiken check --max-success 1000 > /tmp/aiken-check.json
-          jq -r '.modules[] | .name as $m | .tests[] | "\(.status)\t\($m).\(.title)"' /tmp/aiken-check.json
-          jq -e '.summary.failed == 0' /tmp/aiken-check.json > /dev/null
-
-      - name: execution-unit budgets
-        run: scripts/check-budgets.sh /tmp/aiken-check.json
-
-      # plutus.json is committed; rebuild and fail if it no longer matches the
-      # sources. preamble.compiler is excluded because its build suffix
-      # (v1.1.23+unknown from `cargo install` vs +<commit> from release
-      # binaries) differs between otherwise identical compilers.
-      - name: aiken build + blueprint drift check
-        run: |
-          set -euo pipefail
-          git show HEAD:bca-token-plutus/plutus.json > /tmp/plutus.committed.json
-          aiken build
-          if ! diff -u \
-              <(jq -S 'del(.preamble.compiler)' /tmp/plutus.committed.json) \
-              <(jq -S 'del(.preamble.compiler)' plutus.json); then
-            echo "::error::bca-token-plutus/plutus.json is out of date — run 'aiken build' and commit the result"
+          if [ -z "$CI_IMAGE" ]; then
+            echo "::error::Actions variable CI_IMAGE (image name without tag) is not set"
             exit 1
           fi
+          echo "image=${CI_IMAGE}:$(cat docker/ci-cardano.version)" >> "$GITHUB_OUTPUT"
+          echo "CI image: ${CI_IMAGE}:$(cat docker/ci-cardano.version)"
+
+  aiken:
+    name: aiken fmt / check / budgets / build
+    needs: image
+    runs-on: nixos-amd64
+    container:
+      image: ${{ needs.image.outputs.image }}
+      credentials:
+        username: ci_bca
+        password: ${{ secrets.PAT }}
+    steps:
+      - name: Check out repository code
+        uses: https://data.forgejo.org/actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Aiken CI
+        run: ci/aiken.sh

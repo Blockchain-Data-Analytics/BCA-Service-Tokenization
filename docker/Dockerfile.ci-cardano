@@ -1,5 +1,9 @@
 FROM node:22-bookworm-slim
 
+# Links the ghcr.io package to the GitHub repository (and its Actions access).
+LABEL org.opencontainers.image.source="https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization"
+LABEL org.opencontainers.image.description="BCA CI image: Node 22, pnpm, Aiken (checksum-verified)"
+
 ARG AIKEN_VERSION=v1.1.23
 ARG AIKEN_SHA256_AMD64=b98c4ccbada5e35f15ba417a52872aeaf0c65998aed77351769ce5fd2506b570
 ARG AIKEN_SHA256_ARM64=72a40b4e1b8e2219c4d655590d6a6e868d858386db780a36971bd3aaf4d89290
