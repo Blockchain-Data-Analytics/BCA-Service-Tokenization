@@ -65,6 +65,10 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Aiken release tarballs (git LFS), only fetched when the image is built.
+      - if: steps.exists.outputs.exists == 'false'
+        run: git lfs pull --include "ext/aiken-*"
+
       - if: steps.exists.outputs.exists == 'false'
         uses: docker/setup-qemu-action@v3
 

@@ -11,7 +11,7 @@ jobs:
     name: resolve CI image
     runs-on: nixos-amd64
     container:
-      image: code.blockchain-applied.com/bca/nixos:1.0.0
+      image: code.blockchain-applied.com/bca/nixos:1.0.1
       credentials:
         username: ci_bca
         password: ${{ secrets.PAT }}

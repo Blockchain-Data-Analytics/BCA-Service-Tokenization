@@ -254,12 +254,16 @@ hash, address and policy id: treat it as a new deployment, not an in-place upgra
 **Compiler** — the version is pinned in three places that must match:
 
 1. `aiken.toml`: `compiler = "vX.Y.Z"`.
-2. `docker/Dockerfile.ci-cardano`: `AIKEN_VERSION` and the two release tarball
-   checksums, taken from the release's published digests:
+2. `ext/` (git LFS) and `docker/Dockerfile.ci-cardano`: download the two
+   `aiken-<triple>.tar.gz` (`x86_64` and `aarch64` `-unknown-linux-musl`) release
+   tarballs into `ext/` as `aiken-vX.Y.Z-<triple>.tar.gz`, remove the old ones, and
+   update `AIKEN_VERSION` and the two checksums in the Dockerfile. Check the files
+   against the release's published digests:
 
    ```sh
    curl -fsSL https://api.github.com/repos/aiken-lang/aiken/releases/tags/vX.Y.Z \
      | jq -r '.assets[] | select(.name | test("unknown-linux-musl.tar.gz$")) | "\(.name) \(.digest)"'
+   shasum -a 256 ext/aiken-vX.Y.Z-*-unknown-linux-musl.tar.gz
    ```
 
 3. The CI image tag: bump `docker/ci-cardano.version` in the same change. CI runs in

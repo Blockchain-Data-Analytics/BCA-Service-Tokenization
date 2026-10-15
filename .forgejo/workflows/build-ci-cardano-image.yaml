@@ -6,6 +6,7 @@ on:
     paths:
       - "docker/Dockerfile.ci-cardano"
       - "docker/ci-cardano.version"
+      - "ext/aiken-*"
       - ".forgejo/workflows/build-ci-cardano-image.yaml"
   workflow_dispatch:
 
@@ -17,7 +18,7 @@ jobs:
       # Forgejo variable: image name without tag (the tag is docker/ci-cardano.version)
       IMAGE: ${{ vars.CI_IMAGE }}
     container:
-      image: code.blockchain-applied.com/bca/nixos:1.0.0
+      image: code.blockchain-applied.com/bca/nixos:1.0.1
       options: >-
         --privileged
         --security-opt seccomp=unconfined
@@ -33,6 +34,11 @@ jobs:
         uses: https://data.forgejo.org/actions/checkout@v4
         with:
           submodules: false
+          # Aiken release tarballs in ext/, copied into the image (git-lfs is in
+          # the nixos image since 1.0.1).
+          lfs: true
+          # The automatic Actions token is refused for LFS downloads.
+          token: ${{ secrets.PAT }}
 
       - name: Docker login
         shell: nix-shell --run "bash {0}"
@@ -53,6 +59,7 @@ jobs:
       - name: 🐳 Build and push ci-cardano image (amd64 + arm64)
         shell: nix-shell --run "{0}"
         run: |
+          set -eu
           VERSION="$(cat docker/ci-cardano.version)"
           docker buildx build \
             --platform linux/amd64 \
