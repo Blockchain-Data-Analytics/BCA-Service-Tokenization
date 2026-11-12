@@ -1,10 +1,10 @@
-import {
-    time,
-    loadFixture,
-  } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-  import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-  import { expect } from "chai";
-  import hre from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-ethers-chai-matchers/withArgs";
+import { expect } from "chai";
+import { network } from "hardhat";
+
+const { ethers, networkHelpers } = await network.create();
+const { time, loadFixture } = networkHelpers;
+
 
   describe("BCA Funding", function () {
     // We define a fixture to reuse the same setup in every test.
@@ -12,18 +12,18 @@ import {
     // and reset Hardhat Network to that snapshot in every test.
     async function deployContract() {
         // Contracts are deployed using the first signer/account by default
-        const [owner, minter, burner, provider, user1, user2, cron] = await hre.ethers.getSigners();
+        const [owner, minter, burner, provider, user1, user2, cron] = await ethers.getSigners();
 
-        const Token = await hre.ethers.getContractFactory("BCAServiceToken");
+        const Token = await ethers.getContractFactory("BCAServiceToken");
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Contract1 = await hre.ethers.getContractFactory("BCAServiceInstance");
+        const Contract1 = await ethers.getContractFactory("BCAServiceInstance");
         const daily_price = 1n;  // 1 token per 24h
         const day_price = (daily_price * BigInt(10n**precision));
         const serviceContract = await Contract1.deploy(provider, tokenContract.getAddress(), user1, day_price);
 
-        const Contract2 = await hre.ethers.getContractFactory("BCAServiceFunding24");
+        const Contract2 = await ethers.getContractFactory("BCAServiceFunding24");
         const daily_funds = 101n;  // 1.01 token per 24h
         const day_funds = (daily_funds * BigInt(10n**precision) / 100n);
         const target_contract = serviceContract.getAddress();
@@ -31,8 +31,8 @@ import {
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
-        expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user1, 10n*one_token);
-        expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user2, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user1, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user2, 10n*one_token);
 
         const startblocktime: bigint = BigInt(await time.increase(30));
 
@@ -147,7 +147,7 @@ import {
             // Second deposit should succeed
             await expect(
                 funding.fundingContract.connect(funding.cron).deposit()
-            ).to.not.be.reverted;
+            ).to.not.be.revert(ethers);
         });
     });
 
@@ -247,7 +247,7 @@ import {
             // Second deposit should succeed
             await expect(
                 funding.fundingContract.connect(funding.cron).deposit()
-            ).to.not.be.reverted;
+            ).to.not.be.revert(ethers);
 
             // the start time must be registered on the first succesfull call to "deposit"
             expect(await service.serviceContract.startTime()).to.lessThanOrEqual(block1, "not right");

@@ -2,17 +2,15 @@
 
 ## setup
 
-`npm install`
-
-`npx hardhat init`
+`npm install` (Hardhat 3, requires Node.js >= 22.10)
 
 # Run the tests
 
 ```sh
 npx hardhat compile
 npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
+npx hardhat test --gas-stats
+npx hardhat test --coverage
 ```
 
 ### local test deployment

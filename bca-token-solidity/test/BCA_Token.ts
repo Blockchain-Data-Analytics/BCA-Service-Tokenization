@@ -1,11 +1,10 @@
-import {
-  time,
-  loadFixture,
-} from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { anyValue } from "@nomicfoundation/hardhat-ethers-chai-matchers/withArgs";
 import { expect } from "chai";
-import hre from "hardhat";
-import { token } from "../typechain-types/@openzeppelin/contracts";
+import { network } from "hardhat";
+
+const { ethers, networkHelpers } = await network.create();
+const { time, loadFixture } = networkHelpers;
+
 
 describe("BCA Token", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -13,9 +12,9 @@ describe("BCA Token", function () {
   // and reset Hardhat Network to that snapshot in every test.
   async function deployContract() {
     // Contracts are deployed using the first signer/account by default
-    const [owner, minter, burner, user1, user2] = await hre.ethers.getSigners();
+    const [owner, minter, burner, user1, user2] = await ethers.getSigners();
 
-    const Contract = await hre.ethers.getContractFactory("BCAServiceToken");
+    const Contract = await ethers.getContractFactory("BCAServiceToken");
     const tokenContract = await Contract.deploy("Test token", "TST1", minter, burner);
 
     return { tokenContract, owner, minter, burner, user1, user2 };
@@ -84,13 +83,13 @@ describe("Minting", function () {
   it("Minting of new tokens", async function () {
     const { tokenContract, owner, minter, burner, user1, user2 } = await loadFixture(deployContract);
 
-    expect(await tokenContract.connect(minter).mint(user1.address, 100000000)).to.changeTokenBalance(tokenContract, user1, +100000000);
+    await expect(await tokenContract.connect(minter).mint(user1.address, 100000000)).to.changeTokenBalance(ethers, tokenContract, user1, +100000000);
     expect(await tokenContract.connect(minter).totalSupply()).to.equal(100000000);
     await expect(tokenContract.connect(user2).mint(user1.address, 999999999999)).to.be.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
 
     // change of minter address
     expect(await tokenContract.connect(owner).setMinterAddress(user2.address));
-    expect(await tokenContract.connect(user2).mint(user1.address, 100000000)).to.changeTokenBalance(tokenContract, user1, +100000000);
+    await expect(await tokenContract.connect(user2).mint(user1.address, 100000000)).to.changeTokenBalance(ethers, tokenContract, user1, +100000000);
     expect(await tokenContract.connect(user2).totalSupply()).to.equal(200000000);
   });
 });
@@ -99,10 +98,10 @@ describe("Transfer", function () {
   it("Transfer of tokens", async function () {
     const { tokenContract, owner, minter, burner, user1, user2 } = await loadFixture(deployContract);
 
-    expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(tokenContract, user2, +100000000);
-    expect(await tokenContract.connect(user2).transfer(tokenContract.serviceAddress(), 50000000)).to.changeTokenBalances(tokenContract, [user2,tokenContract.serviceAddress()], [-50000000,+50000000]);
-    expect(await tokenContract.connect(user2).transfer(tokenContract.serviceAddress(), 20000000)).to.changeTokenBalances(tokenContract, [user2,tokenContract.serviceAddress()], [-20000000,+20000000]);
-    expect(await tokenContract.connect(burner).burn(tokenContract.serviceAddress(), 70000000)).to.changeTokenBalance(tokenContract, tokenContract.serviceAddress(), -70000000);
+    await expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(ethers, tokenContract, user2, +100000000);
+    await expect(await tokenContract.connect(user2).transfer((await tokenContract.serviceAddress()), 50000000)).to.changeTokenBalances(ethers, tokenContract, [user2,(await tokenContract.serviceAddress())], [-50000000,+50000000]);
+    await expect(await tokenContract.connect(user2).transfer((await tokenContract.serviceAddress()), 20000000)).to.changeTokenBalances(ethers, tokenContract, [user2,(await tokenContract.serviceAddress())], [-20000000,+20000000]);
+    await expect(await tokenContract.connect(burner).burn((await tokenContract.serviceAddress()), 70000000)).to.changeTokenBalance(ethers, tokenContract, (await tokenContract.serviceAddress()), -70000000);
 
     await expect(tokenContract.connect(user2).transfer(user1.address, 999999999999)).to.be.revertedWithCustomError(tokenContract, "ERC20InsufficientBalance");
   });
@@ -112,12 +111,12 @@ describe("TransferFrom", function () {
   it("Transfer allowance from/to accounts", async function () {
     const { tokenContract, owner, minter, burner, user1, user2 } = await loadFixture(deployContract);
 
-    expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(tokenContract, user2, +100000000);
+    await expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(ethers, tokenContract, user2, +100000000);
 
     // cannot use "transferFrom" as no allowance available - use "transfer"
-    await expect(tokenContract.connect(user2).transferFrom(user2.address,tokenContract.serviceAddress(), 50000000)).to.be.revertedWithCustomError(tokenContract, "ERC20InsufficientAllowance");
+    await expect(tokenContract.connect(user2).transferFrom(user2.address,(await tokenContract.serviceAddress()), 50000000)).to.be.revertedWithCustomError(tokenContract, "ERC20InsufficientAllowance");
     await tokenContract.connect(user2).approve(user1, 3000000);
-    expect(await tokenContract.connect(user1).transferFrom(user2.address, user1.address, 2999999)).to.changeTokenBalances(tokenContract, [user2,user1], [-2999999,+2999999]);
+    await expect(await tokenContract.connect(user1).transferFrom(user2.address, user1.address, 2999999)).to.changeTokenBalances(ethers, tokenContract, [user2,user1], [-2999999,+2999999]);
 
   });
 });
@@ -126,15 +125,15 @@ describe("Burning", function () {
   it("Burning of tokens", async function () {
     const { tokenContract, owner, minter, burner, user1, user2 } = await loadFixture(deployContract);
 
-    expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(tokenContract, user2, +100000000);
-    expect(await tokenContract.connect(user2).transfer(tokenContract.serviceAddress(), 50000000)).to.changeTokenBalances(tokenContract, [user2,tokenContract.serviceAddress()], [-50000000,+50000000]);
-    expect(await tokenContract.connect(burner).burn(tokenContract.serviceAddress(), 50000000)).to.changeTokenBalance(tokenContract, tokenContract.serviceAddress(), -50000000);
+    await expect(await tokenContract.connect(minter).mint(user2.address, 100000000)).to.changeTokenBalance(ethers, tokenContract, user2, +100000000);
+    await expect(await tokenContract.connect(user2).transfer((await tokenContract.serviceAddress()), 50000000)).to.changeTokenBalances(ethers, tokenContract, [user2,(await tokenContract.serviceAddress())], [-50000000,+50000000]);
+    await expect(await tokenContract.connect(burner).burn((await tokenContract.serviceAddress()), 50000000)).to.changeTokenBalance(ethers, tokenContract, (await tokenContract.serviceAddress()), -50000000);
     expect(await tokenContract.connect(user1).totalSupply()).to.equal(50000000);
-    expect(tokenContract.connect(user2).burn(user1.address, 9999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
+    await expect(tokenContract.connect(user2).burn(user1.address, 9999999)).to.revertedWithCustomError(tokenContract, "AccessControlUnauthorizedAccount");
     // change of burner address
     expect(await tokenContract.connect(owner).setBurnerAddress(user1.address));
-    expect(await tokenContract.connect(user2).transfer(tokenContract.serviceAddress(), 10000000)).to.changeTokenBalances(tokenContract, [user2,tokenContract.serviceAddress()], [-10000000,+10000000]);
-    expect(await tokenContract.connect(user1).burn(tokenContract.serviceAddress(), 10000000)).to.changeTokenBalance(tokenContract, tokenContract.serviceAddress(), -10000000);
+    await expect(await tokenContract.connect(user2).transfer((await tokenContract.serviceAddress()), 10000000)).to.changeTokenBalances(ethers, tokenContract, [user2,(await tokenContract.serviceAddress())], [-10000000,+10000000]);
+    await expect(await tokenContract.connect(user1).burn((await tokenContract.serviceAddress()), 10000000)).to.changeTokenBalance(ethers, tokenContract, (await tokenContract.serviceAddress()), -10000000);
     expect(await tokenContract.connect(user1).totalSupply()).to.equal(40000000);
   });
 });

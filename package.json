@@ -10,5 +10,13 @@
     "check": "npm run check --workspaces --if-present",
     "cardano:config": "bca-token-plutus/scripts/apply-params.sh",
     "test": "npm run test --workspaces --if-present"
+  },
+  "overrides": {
+    "zod": "$zod",
+    "@effect/platform": "$@effect/platform"
+  },
+  "dependencies": {
+    "zod": "^4.6.7",
+    "@effect/platform": "^0.97.2"
   }
 }

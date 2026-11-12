@@ -13,10 +13,10 @@ How much of the contract's code is covered by tests? This can be answered by:
 
 ```sh
 cd bca-token-solidity
-npx hardhat coverage
+npx hardhat test --coverage
 ```
 
-Which outputs as of today (2024-11-23):
+Example output (2024-11-23, from the former Hardhat 2 / solidity-coverage setup; the Hardhat 3 report has a different layout):
 
 ```sh
 ------------------------------|----------|----------|----------|----------|----------------|
@@ -43,11 +43,11 @@ Clearly, for some of the contracts we have to write some more tests to increase 
 
 # Estimating Gas costs
 
-If we run the tests with the environment variable `REPORT_GAS=true`, then the output will contain information about the Gas usage of the transactions.
+If we run the tests with `--gas-stats`, then the output will contain information about the Gas usage of the transactions (example below is from the former Hardhat 2 gas reporter).
 
 ```sh
 cd bca-token-solidity
-REPORT_GAS=true npx hardhat test
+npx hardhat test --gas-stats
 ```
 
 Will output:

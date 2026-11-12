@@ -1,10 +1,10 @@
-import {
-    time,
-    loadFixture,
-  } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-  import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-  import { expect } from "chai";
-  import hre from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-ethers-chai-matchers/withArgs";
+import { expect } from "chai";
+import { network } from "hardhat";
+
+const { ethers, networkHelpers } = await network.create();
+const { time, loadFixture } = networkHelpers;
+
 
   describe("BCA Service Manager", function () {
     // We define a fixture to reuse the same setup in every test.
@@ -12,26 +12,26 @@ import {
     // and reset Hardhat Network to that snapshot in every test.
     async function deployContract() {
         // Contracts are deployed using the first signer/account by default
-        const [owner, minter, burner, provider1, provider2, user1, user2] = await hre.ethers.getSigners();
+        const [owner, minter, burner, provider1, provider2, user1, user2] = await ethers.getSigners();
 
-        const Token = await hre.ethers.getContractFactory("BCAServiceToken");
+        const Token = await ethers.getContractFactory("BCAServiceToken");
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Manager = await hre.ethers.getContractFactory("BCAServiceManager");
+        const Manager = await ethers.getContractFactory("BCAServiceManager");
         const serviceManager = await Manager.deploy(tokenContract.getAddress());
 
         const addrController1 = await (await serviceManager.connect(owner).newController(provider1)).wait().then(_ => serviceManager.connect(owner).getControllerAddress(provider1));
-        const serviceController1 = await hre.ethers.getContractAt("BCAServiceController", addrController1)
+        const serviceController1 = await ethers.getContractAt("BCAServiceController", addrController1)
         const addrController2 = await (await serviceManager.connect(owner).newController(provider2)).wait().then(_ => serviceManager.connect(owner).getControllerAddress(provider2));
-        const serviceController2 = await hre.ethers.getContractAt("BCAServiceController", addrController2)
+        const serviceController2 = await ethers.getContractAt("BCAServiceController", addrController2)
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
-        expect(await tokenContract.connect(minter).mint(provider1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, provider1, 10n*one_token);
-        expect(await tokenContract.connect(minter).mint(provider2.address, 10n*one_token)).to.changeTokenBalance(tokenContract, provider2, 10n*one_token);
-        expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user1, 10n*one_token);
-        expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user2, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(provider1.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, provider1, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(provider2.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, provider2, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user1, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user2, 10n*one_token);
 
         const startblocktime: bigint = BigInt(await time.increase(30));
 

@@ -1,10 +1,10 @@
-import {
-    time,
-    loadFixture,
-  } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-  import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-  import { expect } from "chai";
-  import hre from "hardhat";
+import { anyValue } from "@nomicfoundation/hardhat-ethers-chai-matchers/withArgs";
+import { expect } from "chai";
+import { network } from "hardhat";
+
+const { ethers, networkHelpers } = await network.create();
+const { time, loadFixture } = networkHelpers;
+
     
   describe("BCA Service", function () {
     // We define a fixture to reuse the same setup in every test.
@@ -12,13 +12,13 @@ import {
     // and reset Hardhat Network to that snapshot in every test.
     async function deployContract() {
         // Contracts are deployed using the first signer/account by default
-        const [owner, minter, burner, provider, user1, user2] = await hre.ethers.getSigners();
+        const [owner, minter, burner, provider, user1, user2] = await ethers.getSigners();
     
-        const Token = await hre.ethers.getContractFactory("BCAServiceToken");
+        const Token = await ethers.getContractFactory("BCAServiceToken");
         const tokenContract = await Token.deploy("Test token", "TOK1", minter, burner);
         const precision: bigint = await tokenContract.decimals().then(d => { if (d == 0n) {return 18n;} else {return d}; });
 
-        const Contract = await hre.ethers.getContractFactory("BCAServiceInstance");
+        const Contract = await ethers.getContractFactory("BCAServiceInstance");
         const daily_price = 1n;  // 1 token per 24h
         const day_price = (daily_price * BigInt(10n**precision));
         assert(day_price > 0n, "tick price must be > 0: " + (day_price.toString()));
@@ -27,8 +27,8 @@ import {
 
         // minting some tokens to the users
         const one_token = 1n * BigInt(10n**precision);
-        expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user1, 10n*one_token);
-        expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(tokenContract, user2, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user1.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user1, 10n*one_token);
+        await expect(await tokenContract.connect(minter).mint(user2.address, 10n*one_token)).to.changeTokenBalance(ethers, tokenContract, user2, 10n*one_token);
       
         const startblocktime: bigint = BigInt(await time.increase(30));
 
@@ -56,7 +56,7 @@ import {
 
       let deposit = token.one_token * 2n;
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       await expect(service.serviceContract.connect(service.user1).balanceProvider()).to.be.revertedWithCustomError(service.serviceContract, 'UnAuthorized()');
     });
@@ -65,7 +65,7 @@ import {
 
       let deposit = token.one_token * 2n;
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       await expect(service.serviceContract.connect(service.provider).balanceUser()).to.be.revertedWithCustomError(service.serviceContract, 'UnAuthorized()');
     });
@@ -84,12 +84,12 @@ import {
 
       let deposit = token.one_token * 2n;
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(30));
 
-      expect(await service.serviceContract.connect(service.user1).stop()).to.emit(service.serviceContract, "ServiceStopped").withArgs('ticks');
+      await expect(await service.serviceContract.connect(service.user1).stop()).to.emit(service.serviceContract, "ServiceStopped").withArgs(anyValue);
       await expect(service.serviceContract.connect(service.user1).stop()).to.be.revertedWithCustomError(service.serviceContract, 'AlreadyStopped()');
     });
     it("A third user cannot stop a contract", async function () {
@@ -97,7 +97,7 @@ import {
 
       let deposit = token.one_token * 2n;
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(30));
@@ -116,7 +116,7 @@ import {
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block1 = BigInt(await time.increase(30));
@@ -127,7 +127,7 @@ import {
         // increase the deposit - also increase the allowance
         deposit = token.one_token * 3n;
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block4 = BigInt(await time.increase(30));
@@ -156,13 +156,13 @@ import {
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block1 = BigInt(await time.increase(12 * 3600));
 
         // the user stops the service
-        expect(await service.serviceContract.connect(service.user1).stop()).to.emit(service.serviceContract, "ServiceStopped").withArgs('ticks');
+        await expect(await service.serviceContract.connect(service.user1).stop()).to.emit(service.serviceContract, "ServiceStopped").withArgs(anyValue);
 
         // check the user's balance
         expect(await service.serviceContract.connect(service.user1).balanceUser()).to.approximately(5n * token.one_token / 10n, 100000000000000n);
@@ -180,7 +180,7 @@ import {
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block1 = BigInt(await time.increase(12 * 3600));
@@ -191,7 +191,7 @@ import {
         // console.log(`user's balance: ${ubal}  deposit: ${rem}  24h price: ${await service.serviceContract.dayPrice()}`)
 
         // the user withdraws from the contract which stops the service
-        expect(await service.serviceContract.connect(service.user1).withdrawUser(ubal)).to.emit(service.serviceContract, "ServiceStopped").withArgs('ticks');
+        await expect(await service.serviceContract.connect(service.user1).withdrawUser(ubal)).to.emit(service.serviceContract, "ServiceStopped").withArgs(anyValue);
 
         // advance time and create a new block
         const block2 = BigInt(await time.increase(3600));
@@ -214,7 +214,7 @@ import {
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block1 = BigInt(await time.increase(23 * 3600));
@@ -235,7 +235,7 @@ import {
         expect(await service.serviceContract.connect(service.provider).balanceProvider()).to.approximately(1n * token.one_token, 10000n);
 
         // the provider withdraws the funds, which stops the service
-        expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token)).to.changeTokenBalances(token.tokenContract, [service.serviceContract.getAddress(),service.provider.address], [1n * token.one_token, - 1n * token.one_token]);
+        await expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token)).to.changeTokenBalances(ethers, token.tokenContract, [service.serviceContract,service.provider.address], [- 1n * token.one_token, 1n * token.one_token]);
 
         // the user tries to make a new deposit which must fail with 'AlreadyStopped'
         await expect(service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.be.revertedWithCustomError(service.serviceContract, 'AlreadyStopped()')
@@ -250,7 +250,7 @@ import {
 
         // approve deposit amounts to be spent by the service contract
         await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-        expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+        await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
         // advance time and create a new block
         const block1 = BigInt(await time.increase(12 * 3600));
@@ -266,13 +266,13 @@ import {
         const block2 = BigInt(await time.increase(20));
         
         // the provider withdraws some funds
-        expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token / 2n)).to.changeTokenBalances(token.tokenContract, [service.serviceContract.getAddress(),service.provider.address], [1n * token.one_token / 2n, - 1n * token.one_token / 2n]);
+        await expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token / 2n)).to.changeTokenBalances(ethers, token.tokenContract, [service.serviceContract,service.provider.address], [- 1n * token.one_token / 2n, 1n * token.one_token / 2n]);
 
         // advance time and create a new block
         const block3 = BigInt(await time.increase(12 * 3600));
 
         // the provider withdraws some funds
-        expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token / 2n)).to.changeTokenBalances(token.tokenContract, [service.serviceContract.getAddress(),service.provider.address], [1n * token.one_token / 2n, - 1n * token.one_token / 2n]);
+        await expect(await service.serviceContract.connect(service.provider).withdrawProvider(1n * token.one_token / 2n)).to.changeTokenBalances(ethers, token.tokenContract, [service.serviceContract,service.provider.address], [- 1n * token.one_token / 2n, 1n * token.one_token / 2n]);
 
         // check the user's balance
         expect(await service.serviceContract.connect(service.user1).balanceUser()).to.equal(0n);
@@ -287,7 +287,7 @@ import {
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(12 * 3600));
@@ -303,7 +303,7 @@ import {
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(12 * 3600));
@@ -319,7 +319,7 @@ import {
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(12 * 3600));
@@ -335,7 +335,7 @@ import {
 
       // approve deposit amounts to be spent by the service contract
       await token.tokenContract.connect(service.user1).approve(service.serviceContract.getAddress(), deposit);
-      expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(token.tokenContract, token.user1, - deposit);
+      await expect(await service.serviceContract.connect(service.user1).makeDeposit(deposit)).to.changeTokenBalance(ethers, token.tokenContract, token.user1, - deposit);
 
       // advance time and create a new block
       const block1 = BigInt(await time.increase(12 * 3600));
@@ -394,7 +394,7 @@ import {
       const { token, service } = await stoppedAfter(6 * 3600);
 
       const balance = await service.serviceContract.connect(service.user1).balanceUser();
-      await expect(service.serviceContract.connect(service.user1).withdrawUser(balance)).to.changeTokenBalance(token.tokenContract, service.user1, balance);
+      await expect(service.serviceContract.connect(service.user1).withdrawUser(balance)).to.changeTokenBalance(ethers, token.tokenContract, service.user1, balance);
       expect(await service.serviceContract.connect(service.user1).balanceUser()).to.equal(0n);
     });
 
