@@ -13,7 +13,7 @@ jobs:
     container:
       image: code.blockchain-applied.com/bca/nixos:1.0.1
       credentials:
-        username: ci_bca
+        username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.PAT }}
     outputs:
       image: ${{ steps.ref.outputs.image }}
@@ -43,7 +43,7 @@ jobs:
     container:
       image: ${{ needs.image.outputs.image }}
       credentials:
-        username: ci_bca
+        username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.PAT }}
     steps:
       - name: Check out repository code

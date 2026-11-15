@@ -23,7 +23,7 @@ jobs:
         --privileged
         --security-opt seccomp=unconfined
       credentials:
-        username: ci_bca
+        username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.PAT }}
       env:
         DOCKER_HOST: tcp://localhost:2375
@@ -43,7 +43,7 @@ jobs:
       - name: Docker login
         shell: nix-shell --run "bash {0}"
         env:
-          DOCKER_USERNAME: "ci_bca"
+          DOCKER_USERNAME: ${{ secrets.REGISTRY_USER }}
           DOCKER_PASSWORD: ${{ secrets.PAT }}
         run: |
           if [ -z "${IMAGE}" ]; then echo "::error::Actions variable CI_IMAGE (image name without tag) is not set"; exit 1; fi

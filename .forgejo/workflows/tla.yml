@@ -1,0 +1,53 @@
+# Model-check the TLA+ models (tla+/) whenever they change.
+# Runs in the CI image built from tla+/Dockerfile (node, git, git-lfs, make, Java).
+name: tla
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tla+/**/*.tla'
+      - 'tla+/**/*.cfg'
+      - 'tla+/check.sh'
+      - 'tla+/ext/**'
+      - '.forgejo/workflows/tla.yml'
+  pull_request:
+    paths:
+      - 'tla+/**/*.tla'
+      - 'tla+/**/*.cfg'
+      - 'tla+/check.sh'
+      - 'tla+/ext/**'
+      - '.forgejo/workflows/tla.yml'
+
+jobs:
+  tlc:
+    runs-on: docker
+    container:
+      image: code.blockchain-applied.com/bca/tla-ci:1
+      credentials:
+        username: ${{ secrets.REGISTRY_USER }}
+        password: ${{ secrets.PAT }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          token: ${{ secrets.PAT }}
+      # git-lfs 3.3.0 sends the checkout's extraheader AND the batch-supplied Authorization
+      # on the object download; Forgejo answers 400. Authenticate through a credential helper only.
+      - name: Fetch LFS objects
+        env:
+          PAT: ${{ secrets.PAT }}
+        run: |
+          git config --unset-all http.https://code.blockchain-applied.com/.extraheader
+          git config credential.helper '!f() { echo username=x-access-token; echo "password=$PAT"; }; f'
+          git lfs pull
+      - name: TLC jar is real (not an LFS pointer)
+        run: |
+          if head -c 100 tla+/ext/tla2tools.jar | grep -q 'git-lfs'; then
+            echo "tla+/ext/tla2tools.jar is an LFS pointer: LFS checkout failed"; exit 1
+          fi
+          java -version
+          java -cp tla+/ext/tla2tools.jar tlc2.TLC 2>&1 | head -1 || true   # no args: usage + exit 1, fatal under pipefail
+      - name: Model check (configs that must pass and configs that must fail)
+        working-directory: tla+
+        run: ./check.sh
