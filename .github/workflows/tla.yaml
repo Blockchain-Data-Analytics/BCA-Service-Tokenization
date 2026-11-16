@@ -1,0 +1,44 @@
+# Model-check the TLA+ models (tla+/) whenever they change.
+# GitHub-hosted runners already have Java and git-lfs: no CI image needed
+# (the Forgejo twin, .forgejo/workflows/tla.yml, uses tla+/Dockerfile).
+name: TLA+ models
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tla+/**/*.tla'
+      - 'tla+/**/*.cfg'
+      - 'tla+/check.sh'
+      - 'tla+/ext/**'
+      - '.github/workflows/tla.yaml'
+  pull_request:
+    paths:
+      - 'tla+/**/*.tla'
+      - 'tla+/**/*.cfg'
+      - 'tla+/check.sh'
+      - 'tla+/ext/**'
+      - '.github/workflows/tla.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tlc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # Only the TLC jar from LFS; `lfs: true` would also download the Aiken tarballs.
+      - name: Fetch LFS objects
+        run: git lfs pull --include="tla+/ext/*.jar"
+      - name: TLC jar is real (not an LFS pointer)
+        run: |
+          if head -c 100 tla+/ext/tla2tools.jar | grep -q 'git-lfs'; then
+            echo "tla+/ext/tla2tools.jar is an LFS pointer: LFS checkout failed"; exit 1
+          fi
+          java -version
+      - name: Model check (configs that must pass and configs that must fail)
+        working-directory: tla+
+        run: ./check.sh
