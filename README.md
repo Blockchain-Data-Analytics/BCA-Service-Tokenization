@@ -5,8 +5,8 @@
 [![TypeScript packages](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/typescript.yaml/badge.svg)](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/typescript.yaml)
 [![Solidity tests](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/sol_testing.yaml/badge.svg)](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/sol_testing.yaml)
 [![Slither](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/analysis_slither.yaml/badge.svg)](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/analysis_slither.yaml)
+[![TLA+ Model-check](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/tla.yaml/badge.svg)](https://github.com/Blockchain-Data-Analytics/BCA-Service-Tokenization/actions/workflows/tla.yaml)
 
-#### Version: 2026-10-05
 #### Copyright: 2024-2026 Alexander Diemand
 #### [License](./LICENSE): GPLv3 - GNU GENERAL PUBLIC LICENSE Version 3
 
@@ -33,7 +33,7 @@ The TypeScript job also needs a secret with a Forgejo token (`read:package`) for
 
 ## Overview
 
-We are developing the tokenization of services and have them managed on a blockchain with smart contracts.
+We are developing the tokenization of services and have them managed with smart contracts on _Cardano_ and _Polygon_ blockchains.
 
 The contracts' behaviour is defined by a fixed set of parameters.
 
@@ -41,7 +41,7 @@ Our product creates a market for tokenized services and brings users and service
 
 ![Overview](./doc/img/service_contract.png)
 
-New and in progress: the same contract also runs on the Cardano network
+The [TLA+ model](./tla+/) is our testbed to develop new features and validate them. The smart contracts are built following this formal specification. 
 
 ## Principles & Ideas
 
