@@ -1,1 +1,1 @@
-tla+/ext/*.jar filter=lfs diff=lfs merge=lfs -text
+ext/*.jar filter=lfs diff=lfs merge=lfs -text

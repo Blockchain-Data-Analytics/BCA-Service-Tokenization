@@ -18,7 +18,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     - name: Run Slither
-      uses: crytic/slither-action@v0.4.0
+      # >= v0.4.2: Python 3.10 -> slither >= 0.11.6 / crytic-compile 0.4 (Hardhat 3 build-info)
+      uses: crytic/slither-action@v0.4.2
       id: slither
       with:
         node-version: 22
