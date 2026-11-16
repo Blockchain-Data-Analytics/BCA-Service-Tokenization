@@ -53,6 +53,8 @@ contract BCAServiceFunding24 is IFunding24, Ownable {
         lastDepositTime = block.timestamp;
 
         // Transfer tokens from owner to this contract
+        // By design anyone (a bot) may trigger this: `from` is always owner(), amount and target are fixed, at most once per 24h.
+        // slither-disable-next-line arbitrary-send-erc20
         token.safeTransferFrom(owner(), address(this), dailyAmount);
 
         // Set allowance for the target contract
